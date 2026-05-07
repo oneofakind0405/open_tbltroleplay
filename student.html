@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adaptive AI Speaking Tutor - 학생용</title>
+    <link rel="stylesheet" href="common.css">
+    <link rel="stylesheet" href="student.css">
+</head>
+<body>
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <p>과업 정보를 불러오는 중...</p>
+        </div>
+
+    <main id="student-app" class="app">
+        <section id="rolecard-section" aria-labelledby="rolecard-title">
+            <header class="rolecard">
+                <div class="overline">[ ROLE CARD ]</div>
+                <small class="translate-helper">ℹ️ 🌐 버튼을 누르면 한글 번역을 볼 수 있어요.</small>
+                
+                <h2 id="rolecard-title">YOUR MISSION (당신의 미션) <button class="tr-btn" data-target="#mission-text" aria-label="Translate mission">🌐</button></h2>
+                <p id="mission-text"><!-- bind existing taskGoal --></p>
+                <div class="grid2">
+                    <div>
+                        <h3>YOUR ROLE (당신의 역할) <button class="tr-btn" data-target="#student-role" aria-label="Translate role">🌐</button></h3>
+                        <p id="student-role"><!-- studentRoleSimple --></p>
+                            </div>
+                    <div>
+                        <h3>TALK TO THE... (대화 상대) <button class="tr-btn" data-target="#ai-role" aria-label="Translate AI role">🌐</button></h3>
+                        <p id="ai-role"><!-- aiRoleSimple --></p>
+                        </div>
+                    </div>
+                <h3>YOUR CHALLENGES (당신의 도전과제) <button class="tr-btn" data-target="#keyInfoList" aria-label="Translate challenges">🌐</button></h3>
+                <ul id="keyInfoList" class="chips"><!-- render studentInfo only --></ul>
+            </header>
+        </section>
+
+        <section id="middle-section" class="middle">
+            <div id="materials-col" class="pane">
+                <div class="tabs" role="tablist" aria-label="Helpful Materials">
+                    <button role="tab" aria-selected="true" id="tab-text" aria-controls="panel-text">📄 Text</button>
+                    <button role="tab" aria-selected="false" id="tab-image" aria-controls="panel-image">🖼️ Image</button>
+                    <button id="btn-materials-translate" class="tr-btn">🌐</button>
+                            </div>
+                <div id="panel-text" role="tabpanel" aria-labelledby="tab-text">
+                    <div id="materials-text" class="scrollbox"><!-- bind supportingMaterialsText --></div>
+                        </div>
+                <div id="panel-image" role="tabpanel" aria-labelledby="tab-image" hidden>
+                    <div class="img-wrap">
+                        <div id="materials-image-wrapper" style="position: relative; display: inline-block;">
+                            <img id="materials-image" alt="Helpful material image"/>
+                            <div class="image-overlay-text">🔍 클릭해서 크게 보기</div>
+                        </div>
+                    </div>
+                </div>
+                            </div>
+            <div id="chat-col" class="pane">
+                <div id="chat-controls">
+                    <button id="btn-start-task" class="primary" aria-label="Start the speaking task">🚀 과업 시작하기</button>
+                        </div>
+                <div id="chat-area" aria-live="polite" aria-busy="true" data-disabled="true">
+                    <div class="chat-wrapper panel">
+                        <h3 class="chat-title">💬 Role-Play Dialogue</h3>
+                        <div id="chatContainer" class="chat-container" aria-live="polite" role="log" aria-label="Chat conversation"></div>
+                    </div>
+                            </div>
+                <div id="voice-input-wrap" data-disabled="true">
+                    <div class="input-area">
+                        <div id="inputPlaceholder" class="input-placeholder">
+                            🎤 마이크 버튼을 눌러 말하세요
+                        </div>
+                        <button id="recordBtn" class="record-btn-large" aria-label="Start voice recording">🎤 녹음 시작</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="bottom-section" class="bottom">
+            <div id="goals-and-save">
+                <h3>과업 완수 체크리스트</h3>
+                <ul id="student-checklist"><!-- bind checklist items --></ul>
+                <div class="actions">
+                    <button id="btn-save-result" class="primary" aria-label="Save task results">결과 저장</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Image Lightbox Modal -->
+    <div id="imgModal" class="img-modal" aria-hidden="true">
+        <div class="img-modal__backdrop" data-close="true"></div>
+        <div class="img-modal__content" role="dialog" aria-label="Image preview">
+            <img id="imgZoom" class="img-modal__image" alt="Preview"/>
+            <div class="img-modal__toolbar">
+                <button type="button" id="btnZoomIn" title="Zoom in">＋</button>
+                <button type="button" id="btnZoomOut" title="Zoom out">－</button>
+                <button type="button" id="btnZoomFit" title="Fit">Fit</button>
+                <a id="btnOpenNew" target="_blank" rel="noopener" title="Open in new tab">↗</a>
+                <a id="btnDownload" download title="Download">⬇</a>
+                <button type="button" id="btnClose" title="Close">✕</button>
+            </div>
+        </div>
+    </div>
+
+    <audio id="audioPlayer" style="display: none;"></audio>
+
+    <script>
+        // Materials Translation eXperience (MTX) state
+        const MTX = {
+            shown: 'en',        // 'en' | 'ko'
+            en: '',             // 원문
+            ko: '',             // 번역본 캐시
+            hash: '',           // 원문 해시 (변경 감지용)
+            key: ''             // localStorage 키
+        };
+        
+        // 간단 해시 (djb2)
+        function hashText(s=''){ 
+            let h=5381; 
+            for(let i=0;i<s.length;i++){ 
+                h=((h<<5)+h)+s.charCodeAt(i); 
+            } 
+            return String(h>>>0); 
+        }
+
+        // Translation helper function for checklist items
+        async function translateText(text, context = '') {
+            try {
+                // 💡 문맥이 없으면 미션 텍스트를 기본 문맥으로 사용
+                if (!context) {
+                    context = document.getElementById('mission-text')?.textContent || '';
+                }
+
+                const response = await fetch('/api/translate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    // 💡 context 필드 추가
+                    body: JSON.stringify({ text: text, target: 'ko', context: context })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Translation request failed');
+                }
+                
+                const data = await response.json();
+                return data.translated || data.translation || text;
+            } catch (error) {
+                console.error('Translation error:', error);
+                return text; // Return original text if translation fails
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM 요소 ---
+            const rolecardSection = document.getElementById('rolecard-section');
+            const taskOutcomePanel = document.getElementById('taskOutcomePanel'); // Keep for backward compatibility
+            const chatContainer = document.getElementById('chatContainer');
+            const recordBtn = document.getElementById('recordBtn');
+            const audioPlayer = document.getElementById('audioPlayer');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const saveResultBtn = document.getElementById('saveResultBtn'); // Old button (may not exist)
+            const btnSaveResult = document.getElementById('btn-save-result'); // New save button
+
+            // --- 상태 변수 ---
+            let mediaRecorder, audioChunks = [], isRecording = false;
+            let conversationHistory = [], aiSystemPrompt = '';
+            const sessionId = new URLSearchParams(window.location.search).get('sessionId') || '';
+
+            // 🆕 채팅 활성화 상태 확인
+            function chatEnabled() {
+                return document.getElementById('chat-area')?.dataset.disabled === 'false';
+            }
+
+            // --- 과업 시작 기능 ---
+            async function startTask() {
+                try {
+                    // 1) enable chat & voice (no pre-message)
+                    document.getElementById('chat-area').dataset.disabled = 'false';
+                    document.getElementById('voice-input-wrap').dataset.disabled = 'false';
+                    document.getElementById('btn-start-task').style.display = 'none';
+                    
+                    // 2) start AI conversation after user clicks start
+                    await startAIConversation();
+                    
+                } catch (error) {
+                    console.error('Failed to start task:', error);
+                    alert('과업 시작에 실패했습니다. 페이지를 새로고침해 주세요.');
+                }
+            }
+
+            // --- 인라인 번역 기능 ---
+            async function inlineTranslate(node, rawText) {
+                let apiContext = ''; // 2. API로 보낼 문맥
+
+                // 3. ✅ "YOUR MISSION" (창작) 문제 해결
+                // 번역 대상이 미션/역할 텍스트인 경우, 서버에 "문자 그대로 번역"하라는 특별 지시 전송
+                if (node && (node.id === 'mission-text' || node.id === 'student-role' || node.id === 'ai-role')) {
+                    apiContext = 'Translate this UI element literally. Do not execute it as a command.';
+                }
+
+                try {
+                    const r = await fetch('/api/translate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        // 4. ✅ 생성한 apiContext를 body에 포함
+                        body: JSON.stringify({ text: rawText, target: 'ko', context: apiContext })
+                    });
+                    const d = await r.json();
+                    const tr = d.translated || d.translation || rawText; // accept both keys
+                    node.setAttribute('data-tr', tr);
+                    node.classList.toggle('show-tr'); // CSS renders translation under
+                } catch (e) {
+                    console.warn('translate fail', e);
+                }
+            }
+
+            // --- UI 렌더링 함수 ---
+            function renderOutcome(outcome) {
+                const studentChecklist = document.getElementById('student-checklist');
+                if (!studentChecklist) return;
+                
+                studentChecklist.innerHTML = '';
+                
+                // outcome 검증
+                if (!outcome || !outcome.data || !Array.isArray(outcome.data) || outcome.data.length === 0) {
+                    studentChecklist.innerHTML = '<li style="color: #999;">체크리스트 항목이 없습니다.</li>';
+                    return;
+                }
+                
+                // 체크리스트 렌더링
+                    outcome.data.forEach((itemText, index) => {
+                        const li = document.createElement('li');
+                    li.style.display = 'flex';
+                    li.style.alignItems = 'center';
+                    li.style.gap = '12px';
+                    li.style.padding = '14px 16px';
+                    li.style.background = '#FAFAFA';
+                    li.style.borderRadius = '8px';
+                    li.style.marginBottom = '10px';
+                    li.style.borderLeft = '3px solid #E0E0E0';
+                    li.style.transition = 'all 0.2s';
+                    
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.id = `checklist-${index}`;
+                    checkbox.style.width = '20px';
+                    checkbox.style.height = '20px';
+                    checkbox.style.cursor = 'pointer';
+                    checkbox.style.flexShrink = '0';
+                    
+                    const label = document.createElement('label');
+                    label.className = 'ck-label';
+                    label.htmlFor = `checklist-${index}`;
+                    label.textContent = itemText;
+                    label.style.flex = '1';
+                    label.style.cursor = 'pointer';
+                    label.style.fontSize = '0.95rem';
+                    label.style.color = '#555';
+                    label.style.lineHeight = '1.6';
+                    
+                    // 번역 아이콘 추가
+                    const translateIcon = document.createElement('span');
+                    translateIcon.className = 'translate-icon outcome-icon';
+                    translateIcon.innerHTML = '🌐';
+                    translateIcon.title = '번역 보기';
+                    translateIcon.style.marginLeft = '8px';
+                    translateIcon.style.cursor = 'pointer';
+                    translateIcon.style.fontSize = '1rem';
+                    translateIcon.style.opacity = '0.6';
+                    translateIcon.style.transition = 'opacity 0.2s';
+                    
+                    translateIcon.addEventListener('mouseenter', () => {
+                        translateIcon.style.opacity = '1';
+                    });
+                    
+                    translateIcon.addEventListener('mouseleave', () => {
+                        translateIcon.style.opacity = '0.6';
+                    });
+                    
+                    translateIcon.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        const existingTranslation = li.querySelector('.outcome-translation');
+                        if (existingTranslation) {
+                            existingTranslation.remove();
+                        } else {
+                            try {
+                                // 💡 미션 텍스트를 문맥으로 전달
+                                const missionContext = document.getElementById('mission-text')?.textContent || '';
+                                const translation = await translateText(itemText, missionContext);
+                                const translationDiv = document.createElement('div');
+                                translationDiv.className = 'translation-text outcome-translation';
+                                translationDiv.textContent = translation;
+                                translationDiv.style.cssText = `
+                                    width: 100%;
+                                    margin-top: 8px;
+                                    margin-left: 0;
+                                    order: 10;
+                                `;
+                                li.appendChild(translationDiv);
+                            } catch (error) {
+                                console.warn('Translation failed:', error);
+                            }
+                        }
+                    });
+                    
+                    // 체크 시 스타일 변경
+                    checkbox.addEventListener('change', () => {
+                        if (checkbox.checked) {
+                            label.style.textDecoration = 'line-through';
+                            label.style.color = '#999';
+                            li.style.borderLeftColor = '#50C878';
+                        } else {
+                            label.style.textDecoration = 'none';
+                            label.style.color = '#555';
+                            li.style.borderLeftColor = '#E0E0E0';
+                        }
+                    });
+                    
+                        li.appendChild(checkbox);
+                        li.appendChild(label);
+                        li.appendChild(translateIcon);
+                    studentChecklist.appendChild(li);
+                    });
+                }
+
+            
+            function renderTaskUI(data) {
+                // 🆕 서버에서 가공된 roleCard 데이터를 직접 사용
+                if (data.roleCard) {
+                    // 1. YOUR MISSION
+                    const missionElement = document.getElementById('mission-text');
+                    if (missionElement) {
+                        missionElement.textContent = data.roleCard.mission;
+                    }
+                    
+                    // 2. YOUR ROLE
+                    const studentRoleElement = document.getElementById('student-role');
+                    if (studentRoleElement) {
+                        studentRoleElement.textContent = data.roleCard.youAre;
+                    }
+                    
+                    // 3. KEY INFO & CHALLENGES - 서버에서 이미 리스트로 가공됨
+                    const keyInfoList = document.getElementById('keyInfoList');
+                    if (keyInfoList && data.roleCard.importantInfo) {
+                        keyInfoList.innerHTML = '';
+                        data.roleCard.importantInfo.forEach(info => {
+                            const li = document.createElement('li');
+                            li.textContent = info;
+                            keyInfoList.appendChild(li);
+                        });
+                    }
+                    
+                    // 4. TALK TO THE...
+                    const aiRoleElement = document.getElementById('ai-role');
+                    if (aiRoleElement) {
+                        aiRoleElement.textContent = data.roleCard.talkTo;
+                    }
+                } else {
+                    // 🆕 fallback: roleCard가 없는 경우 기존 방식 사용
+                    console.warn('roleCard data not found, using fallback method');
+                    
+                    // 🔥 헬퍼 함수: 텍스트를 줄바꿈 포함하여 렌더링
+                    function setTextWithLineBreaks(elementId, text) {
+                        const element = document.getElementById(elementId);
+                        if (element && text) {
+                            // \n을 <br>로 변환하여 HTML로 렌더링
+                            element.innerHTML = text.replace(/\n/g, '<br>');
+                        }
+                    }
+                    
+                    // 1. YOUR MISSION - mission-text로 변경
+                    setTextWithLineBreaks('mission-text', data.taskGoal);
+                    
+                    // 2. YOUR ROLE - student-role로 변경
+                    setTextWithLineBreaks('student-role', data.studentRole);
+                    
+                    // 3. KEY INFO & CHALLENGES - situation을 리스트로 변환
+                    const keyInfoList = document.getElementById('keyInfoList');
+                    if (keyInfoList && data.situation) {
+                        // situation 텍스트를 줄바꿈으로 분리하여 리스트 아이템으로 생성
+                        const situationLines = data.situation.split('\n').filter(line => line.trim());
+                        keyInfoList.innerHTML = '';
+                        
+                        situationLines.forEach(line => {
+                            const li = document.createElement('li');
+                            // "-" 또는 "•" 제거하고 텍스트만 추출
+                            const cleanText = line.replace(/^[-•]\s*/, '').trim();
+                            if (cleanText) {
+                                li.textContent = cleanText;
+                                keyInfoList.appendChild(li);
+                            }
+                        });
+                    }
+                    
+                    // 4. TALK TO THE... - AI 역할 이름만 표시
+                    const aiRoleElement = document.getElementById('ai-role');
+                    if (aiRoleElement && data.aiRole) {
+                        let roleText = data.aiRole
+                            .split('\n')[0] // 첫 줄
+                            .replace(/^-\s*/, '') // "-" 제거
+                            .replace(/^You are (the |a |an )?/i, '') // "You are the/a/an" 제거
+                            .trim();
+                        
+                        // 첫 글자 대문자
+                        if (roleText) {
+                            roleText = roleText.charAt(0).toUpperCase() + roleText.slice(1);
+                        }
+                        
+                        aiRoleElement.textContent = roleText || 'AI assistant';
+                    }
+                }
+                
+                // 🆕 보조자료 렌더링 - 새로운 탭 구조
+                if (data.supportingMaterials) {
+                    const materialsText = document.getElementById('materials-text');
+                    const materialsImage = document.getElementById('materials-image');
+                    const tabText = document.getElementById('tab-text');
+                    const tabImage = document.getElementById('tab-image');
+                    
+                    // 텍스트 자료가 있으면
+                    if (data.supportingMaterials.text && materialsText) {
+                        materialsText.textContent = data.supportingMaterials.text;
+                        // Force visibility with inline styles
+                        materialsText.style.color = '#2c3e50';
+                        materialsText.style.background = '#ffffff';
+                        tabText.style.display = 'inline-block';
+                        bindMaterialsOriginalNow(); // 🔧 원본 텍스트 저장
+                        // EN 상태로 보이게 유지 (초기 표시는 항상 원문)
+                        if (materialsText) { 
+                            materialsText.textContent = MTX.en; 
+                            materialsText.style.color = '#2c3e50'; // Force visibility
+                            setMaterialsButtonState('en'); 
+                        }
+                    } else {
+                        tabText.style.display = 'none';
+                    }
+                    
+                    // 이미지가 있으면
+                    if (data.supportingMaterials.fileUrl && materialsImage) {
+                        materialsImage.src = data.supportingMaterials.fileUrl;
+                        materialsImage.alt = 'Helpful material image';
+                        tabImage.style.display = 'inline-block';
+                    } else {
+                        tabImage.style.display = 'none';
+                    }
+                    
+                    // 자료가 없으면 기본 텍스트 표시
+                    if (!data.supportingMaterials.text && !data.supportingMaterials.fileUrl) {
+                        if (materialsText) {
+                            materialsText.textContent = 'No supporting materials available.';
+                            // Force visibility with inline styles
+                            materialsText.style.color = '#2c3e50';
+                            materialsText.style.background = '#ffffff';
+                            bindMaterialsOriginalNow(); // 🔧 원본 텍스트 저장
+                            // EN 상태로 보이게 유지 (초기 표시는 항상 원문)
+                            materialsText.textContent = MTX.en; 
+                            materialsText.style.color = '#2c3e50'; // Force visibility
+                            setMaterialsButtonState('en');
+                        }
+                        tabText.style.display = 'inline-block';
+                        tabImage.style.display = 'none';
+                    }
+                } else {
+                    // 데이터가 없으면 기본 메시지
+                    const materialsText = document.getElementById('materials-text');
+                    if (materialsText) {
+                        materialsText.textContent = 'No supporting materials available.';
+                        // Force visibility with inline styles
+                        materialsText.style.color = '#2c3e50';
+                        materialsText.style.background = '#ffffff';
+                        bindMaterialsOriginalNow(); // 🔧 원본 텍스트 저장
+                        // EN 상태로 보이게 유지 (초기 표시는 항상 원문)
+                        materialsText.textContent = MTX.en; 
+                        materialsText.style.color = '#2c3e50'; // Force visibility
+                        setMaterialsButtonState('en');
+                    }
+                }
+                
+                renderOutcome(data.taskOutcome);
+
+                aiSystemPrompt = data.aiScaffoldingPrompt;
+                conversationHistory.push({ role: 'system', content: aiSystemPrompt });
+                
+                // 로딩 완료 후 숨기기
+                const loadingOverlay = document.getElementById('loadingOverlay');
+                if(loadingOverlay) loadingOverlay.style.display = 'none';
+
+                // ❌ 자동 AI 대화 시작 제거됨 - 사용자가 "과업 시작" 버튼을 클릭할 때만 시작
+            }
+
+            // **새로운 함수 추가**: renderTaskUI 함수 바로 아래에 이 함수를 추가해주세요.
+            async function startAIConversation() {
+                // 화면에 표시되지 않는, AI를 깨우기 위한 메시지
+                const initialPrompt = { role: 'user', content: '(The user has just entered the room. Greet them and start the conversation according to your role.)' };
+                
+                try {
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            messages: [...conversationHistory, initialPrompt],
+                            sessionId
+                        })
+                    });
+
+                    if (!response.ok) { throw new Error('AI 응답을 가져오는 중 오류 발생'); }
+
+                    const data = await response.json();
+                    const aiResponse = data.message;
+
+                    addMessageToChat('assistant', aiResponse);
+                    conversationHistory.push({ role: 'assistant', content: aiResponse });
+                    
+                    await playAIAudio(aiResponse);
+
+                } catch (error) {
+                    console.error('Initial Chat error:', error);
+                    addMessageToChat('system', `오류가 발생했습니다: ${error.message}`);
+                }
+            }
+
+            async function loadTaskData() {
+                loadingOverlay.style.display = 'flex'; // 로딩 시작
+                const params = new URLSearchParams(window.location.search);
+                const sessionId = params.get('sessionId');
+                if (!sessionId) { document.body.innerHTML = '<h1>Error: Session ID not found.</h1>'; return; }
+                try {
+                    const response = await fetch(`/api/task-info/${sessionId}`);
+                    if (!response.ok) throw new Error('Failed to load task data.');
+                    const taskData = await response.json();
+                    renderTaskUI(taskData);
+            } catch (error) {
+                    console.error('Error loading task data:', error);
+                    document.body.innerHTML = `<h1>Error: ${error.message}</h1>`;
+                }
+            }
+
+            function addMessageToChat(sender, text) {
+                const messageWrapper = document.createElement('div');
+                messageWrapper.className = `message-wrapper ${sender}-wrapper`;
+                const messageBubble = document.createElement('div');
+                messageBubble.className = `message ${sender}`;
+                messageBubble.textContent = text;
+                messageWrapper.appendChild(messageBubble);
+                if (sender === 'assistant') {
+                    const translateIcon = document.createElement('span');
+                    translateIcon.className = 'translate-icon';
+                    translateIcon.innerHTML = '🌐';
+                    translateIcon.title = '번역 보기';
+                    messageWrapper.appendChild(translateIcon);
+                }
+                chatContainer.appendChild(messageWrapper);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                return messageBubble; // Return the message element so it can be referenced later
+            }
+
+            // --- 음성 기능 ---
+            async function playAIAudio(text) {
+                 if (!text) return;
+                 try {
+                    const response = await fetch('/api/proxy-elevenlabs', {
+                    method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text })
+                    });
+                    if (response.ok) {
+                        const audioBlob = await response.blob();
+                        const audioUrl = URL.createObjectURL(audioBlob);
+                        audioPlayer.src = audioUrl;
+                        
+                        // ▼▼▼ 음성 속도 조절 ▼▼▼
+                        audioPlayer.playbackRate = 0.9; // 1.0이 기본 속도, 0.9는 90% 속도
+                        
+                        audioPlayer.play();
+                    } else { throw new Error('TTS Error'); }
+                 } catch (error) { console.error('AI 음성 재생 오류:', error); }
+            }
+
+            async function handleRecordClick() {
+                // 🆕 채팅 활성화 상태 확인
+                if (!chatEnabled()) {
+                    alert('먼저 "과업 시작하기"를 눌러주세요.');
+                    return;
+                }
+                
+            if (isRecording) {
+                mediaRecorder.stop();
+                    // onstop 이벤트에서 상태 초기화가 처리됨
+            } else {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                    audioChunks = [];
+                        
+                        mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
+                        mediaRecorder.onstop = () => {
+                            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                            // 🆕 무음/노이즈 방지: 8KB 미만은 무음으로 간주
+                            const minBytes = 8000;
+                            if (audioBlob && audioBlob.size < minBytes) { 
+                                console.log('[stt] ignore short audio'); 
+                                return; 
+                            }
+                            if (audioBlob.size > 0) {
+                                transcribeAudio(audioBlob);
+                            }
+                        stream.getTracks().forEach(track => track.stop());
+                            
+                            // 녹음 상태 초기화
+                            isRecording = false;
+                            recordBtn.textContent = '🎤 녹음 시작';
+                            recordBtn.classList.remove('recording');
+                    };
+                        
+                    mediaRecorder.start();
+                        isRecording = true;
+                        recordBtn.textContent = '⏹️ 녹음 중지';
+                        recordBtn.classList.add('recording');
+                        
+                    } catch (err) {
+                        console.error("마이크 접근 오류:", err);
+                        alert("마이크에 접근할 수 없습니다.");
+                        
+                        // 에러 발생 시 상태 초기화
+                        isRecording = false;
+                        recordBtn.textContent = '🎤 녹음 시작';
+                        recordBtn.classList.remove('recording');
+                    }
+                }
+            }
+
+            async function transcribeAudio(audioBlob) {
+                // 🆕 채팅 활성화 상태 확인 (이중 체크)
+                if (!chatEnabled()) {
+                    console.warn('Chat is disabled, skipping transcription');
+                    return;
+                }
+                
+                // 로딩 메시지
+                const loadingMsg = addMessageToChat('system', '🎤 음성을 텍스트로 변환 중...');
+                const loadingMsgWrapper = loadingMsg.parentElement;
+                
+                    const formData = new FormData();
+                    formData.append('audio', audioBlob, 'recording.webm');
+
+                    try {
+                        const response = await fetch('/api/proxy-whisper', {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        const data = await response.json();
+                        
+                    if (response.ok && data.text && data.text.trim()) {
+                        // 시스템 메시지 제거
+                        loadingMsgWrapper.remove();
+                        
+                        // 🆕 STT 가드: 짧은/빈 텍스트 및 데모 텍스트 방지
+                        const text = (data.text || '').trim();
+                        if (!text || text.length < 2) { 
+                            console.log('[stt] ignore short/empty'); 
+                            return; 
+                        }
+                        if (/^thanks for watching!?$/i.test(text)) { 
+                            console.log('[stt] ignore demo text'); 
+                            return; 
+                        }
+                        
+                        // 사용자 메시지로 직접 표시
+                        const userText = text;
+                        addMessageToChat('user', userText);
+                        
+                        // AI 응답 받기
+                        await getAIResponse(userText);
+                        } else {
+                        throw new Error(data.error || '음성에서 텍스트를 인식할 수 없습니다. 다시 말씀해 주세요.');
+                        }
+                    } catch (error) {
+                        console.error('음성 변환 오류:', error);
+                    loadingMsg.textContent = `❌ 음성 변환 실패: ${error.message}`;
+                    loadingMsg.style.color = '#e74c3c';
+                            
+                            // 3초 후 메시지 제거
+                            setTimeout(() => {
+                        loadingMsgWrapper.remove();
+                            }, 3000);
+                        }
+                    }
+
+            // AI 응답 받는 함수 분리
+            async function getAIResponse(userMessage) {
+                conversationHistory.push({ role: 'user', content: userMessage });
+                
+                // 로딩 표시
+                const thinkingMsg = addMessageToChat('system', '💭 AI가 생각하는 중...');
+                const thinkingMsgWrapper = thinkingMsg.parentElement;
+                
+                try {
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ messages: conversationHistory, sessionId })
+                    });
+                    
+                    if (!response.ok) throw new Error('AI 응답 오류');
+                    
+                    const data = await response.json();
+                    const aiResponse = data.message;
+                    
+                    // 시스템 메시지 제거
+                    thinkingMsgWrapper.remove();
+                    
+                    // AI 응답 표시
+                    addMessageToChat('assistant', aiResponse);
+                    conversationHistory.push({ role: 'assistant', content: aiResponse });
+                    
+                    // 음성 재생
+                    await playAIAudio(aiResponse);
+                    
+                } catch (error) {
+                    console.error('Chat error:', error);
+                    thinkingMsg.textContent = `❌ 오류: ${error.message}`;
+                    thinkingMsg.style.color = '#e74c3c';
+                    
+                    // 3초 후 메시지 제거
+                    setTimeout(() => {
+                        thinkingMsgWrapper.remove();
+                    }, 3000);
+                }
+            }
+
+            // --- 이벤트 리스너 ---
+            if (rolecardSection) {
+                // 💡 미션 텍스트를 미리 가져옴
+                const roleCardContext = document.getElementById('mission-text')?.textContent || 'Role-play conversation context';
+                
+                rolecardSection.addEventListener('click', async (e) => {
+                if (e.target.classList.contains('translate-icon')) {
+                    const icon = e.target;
+                    const targetId = icon.dataset.target;
+                    
+                    if (targetId === 'keyInfoList') {
+                        // 🆕 keyInfoList 특별 처리 - 리스트 번역
+                        const targetElement = document.getElementById(targetId);
+                        const contentDiv = targetElement.parentElement;
+                        const existingTranslation = contentDiv.querySelector('.translation-text');
+                        
+                        if (existingTranslation) {
+                            existingTranslation.remove();
+                        } else {
+                            // 리스트 아이템들의 텍스트를 수집
+                            const listItems = targetElement.querySelectorAll('li');
+                            const originalTexts = Array.from(listItems).map(li => li.textContent.trim()).join('\n');
+                            
+                            if (!originalTexts || !originalTexts.trim()) return;
+                            
+                            icon.textContent = '...';
+                            icon.classList.add('loading');
+                            let translatedText;
+                            try {
+                                const response = await fetch('/api/translate', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    // 💡 studentInfo context로 변경
+                                    body: JSON.stringify({ text: originalTexts, targetLanguage: 'ko', context: 'studentInfo' })
+                                });
+                                const data = await response.json();
+                                translatedText = data.translation;
+                            } catch (error) {
+                                console.error('Translation error:', error);
+                                icon.textContent = '🌐';
+                                icon.classList.remove('loading');
+                                return;
+                            }
+                            
+                            const translationDiv = document.createElement('div');
+                            translationDiv.className = 'translation-text';
+                            translationDiv.style.lineHeight = '1.8';
+                            translationDiv.style.marginTop = '10px';
+                            translationDiv.style.whiteSpace = 'normal';
+                            
+                            // 번역된 텍스트를 리스트 형태로 변환
+                            const translatedLines = translatedText.split('\n');
+                            const translatedList = document.createElement('ul');
+                            translatedList.style.paddingLeft = '20px';
+                            translatedList.style.margin = '0';
+                            
+                            translatedLines.forEach(line => {
+                                if (line.trim()) {
+                                    const li = document.createElement('li');
+                                    li.textContent = line.trim();
+                                    translatedList.appendChild(li);
+                                }
+                            });
+                            
+                            translationDiv.appendChild(translatedList);
+                            contentDiv.appendChild(translationDiv);
+                            icon.innerHTML = '🌐';
+                        }
+                    } else {
+                        // 🔥 일반 정보 번역 - 줄바꿈 유지
+                        const targetElement = document.getElementById(targetId);
+                        const contentDiv = targetElement.parentElement;
+                        const existingTranslation = contentDiv.querySelector('.translation-text');
+                        
+                        if (existingTranslation) {
+                            existingTranslation.remove();
+                        } else {
+                            // innerHTML로 원본 가져오기 (줄바꿈 유지)
+                            const originalText = targetElement.innerHTML.replace(/<br\s*\/?>/gi, '\n');
+                            if (!originalText || !originalText.trim()) return;
+                            
+                            icon.textContent = '...';
+                            icon.classList.add('loading');
+                            let translatedText;
+                            try {
+                                const response = await fetch('/api/translate', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    // 💡 context 필드 추가
+                                    body: JSON.stringify({ text: originalText, targetLanguage: 'ko', context: roleCardContext })
+                                });
+                                const data = await response.json();
+                                translatedText = data.translation;
+                            } catch (error) {
+                                console.error('Translation error:', error);
+                                icon.textContent = '🌐';
+                                icon.classList.remove('loading');
+                                return;
+                            }
+                            
+                            const translationDiv = document.createElement('div');
+                            translationDiv.className = 'translation-text';
+                            // 🔥 줄바꿈 유지: \n을 <br>로 변환
+                            translationDiv.innerHTML = translatedText.replace(/\n/g, '<br>');
+                            translationDiv.style.lineHeight = '1.8';
+                            translationDiv.style.marginTop = '10px';
+                            translationDiv.style.whiteSpace = 'normal';
+                            
+                            contentDiv.appendChild(translationDiv);
+                            icon.innerHTML = '🌐';
+                        }
+                    }
+                }
+            });
+            }
+
+            if (chatContainer) {
+            chatContainer.addEventListener('click', async (e) => {
+                if (e.target.classList.contains('translate-icon')) {
+                    const icon = e.target;
+                    const messageWrapper = icon.closest('.message-wrapper');
+                    const messageBubble = messageWrapper.querySelector('.message');
+                    const originalText = messageBubble.textContent;
+                    const existingTranslation = messageWrapper.querySelector('.translation-text');
+                    
+                    if (existingTranslation) {
+                        existingTranslation.remove();
+            } else {
+                        icon.textContent = '...';
+                        icon.classList.add('loading');
+                        let translatedText;
+                        try {
+                            // 💡 대화 내역에서 최근 3개의 메시지를 문맥으로 추출
+                            const contextMessages = conversationHistory
+                                .slice(-3) // 최근 3개
+                                .map(msg => `${msg.role}: ${msg.content}`)
+                                .join('\n');
+                            
+                            // 💡 미션 텍스트도 기본 문맥으로 추가
+                            const missionContext = document.getElementById('mission-text')?.textContent || '';
+                            const fullContext = `${missionContext}\n\n[Recent Conversation]\n${contextMessages}`;
+
+                            const response = await fetch('/api/translate', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                // 💡 text와 함께 context 전송
+                                body: JSON.stringify({ 
+                                    text: originalText, 
+                                    targetLanguage: 'ko',
+                                    context: fullContext 
+                                })
+                            });
+                            const data = await response.json();
+                            translatedText = data.translation;
+                        } catch (error) {
+                            console.error('Translation error:', error);
+                            icon.textContent = '🌐';
+                            icon.classList.remove('loading');
+                            return;
+                        }
+                        
+                        const translationDiv = document.createElement('div');
+                        translationDiv.className = 'translation-text';
+                        // 🔥 줄바꿈 유지
+                        translationDiv.innerHTML = translatedText.replace(/\n/g, '<br>');
+                        translationDiv.style.lineHeight = '1.8';
+                        
+                        messageWrapper.appendChild(translationDiv);
+                        icon.innerHTML = '🌐';
+                    }
+                }
+            });
+            }
+
+            // 🆕 체크리스트 라벨 번역 이벤트 리스너
+            const checklist = document.getElementById('student-checklist');
+            checklist?.addEventListener('click', async (e) => {
+                const label = e.target.closest('label.ck-label');
+                if (!label) return;
+                // 이미 번역이 있으면 토글만
+                if (label.hasAttribute('data-tr')) {
+                    label.classList.toggle('show-tr');
+                    return;
+                }
+                const raw = label.textContent || '';
+                try {
+                    const r = await fetch('/api/translate', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: raw, target: 'ko' })
+                    });
+                    const d = await r.json();
+                    label.setAttribute('data-tr', d.translated || d.translation || raw);
+                    label.classList.add('show-tr');   // 처음은 펼쳐서 보여줌
+                } catch (err) { 
+                    console.warn('[translate] fail', err); 
+                }
+            });
+            
+            // 🆕 DOM에 남아있는 오른쪽 번역 아이콘 청소
+            document.querySelectorAll('.translate-icon').forEach(el => el.remove());
+            
+            if (recordBtn) {
+                recordBtn.addEventListener('click', handleRecordClick);
+            }
+            if (saveResultBtn) {
+                saveResultBtn.addEventListener('click', saveTaskResult);
+            }
+            
+            // 🆕 새로운 저장 버튼 이벤트 리스너 (기존 버튼과 동일한 핸들러 사용)
+            console.log('🔴 SAVE BUTTON DEBUG:', {
+                found: !!btnSaveResult,
+                element: btnSaveResult,
+                parentExists: !!document.getElementById('goals-and-save'),
+                sectionExists: !!document.getElementById('bottom-section'),
+                displayStyle: btnSaveResult ? window.getComputedStyle(btnSaveResult).display : 'N/A',
+                visibilityStyle: btnSaveResult ? window.getComputedStyle(btnSaveResult).visibility : 'N/A',
+                opacityStyle: btnSaveResult ? window.getComputedStyle(btnSaveResult).opacity : 'N/A'
+            });
+
+            if (btnSaveResult) {
+                btnSaveResult.addEventListener('click', saveTaskResult);
+                console.log('✅ Event listener attached to save button');
+            } else {
+                console.error('❌ SAVE BUTTON NOT FOUND IN DOM');
+                console.error('📋 Available IDs:', Array.from(document.querySelectorAll('[id]')).map(el => el.id));
+            }
+            
+            // 🆕 과업 시작 버튼 이벤트 리스너
+            const startTaskBtn = document.getElementById('btn-start-task');
+            if (startTaskBtn) {
+                startTaskBtn.addEventListener('click', startTask);
+            }
+            
+            // 🆕 초기 비활성 상태 설정
+            const chatArea = document.getElementById('chat-area');
+            const voiceInputWrap = document.getElementById('voice-input-wrap');
+            
+            if (chatArea) {
+                chatArea.setAttribute('data-disabled', 'true');
+                chatArea.setAttribute('aria-busy', 'true');
+            }
+            
+            if (voiceInputWrap) {
+                voiceInputWrap.setAttribute('data-disabled', 'true');
+            }
+            
+            // 🆕 탭 전환 로직 (안전하게 함수로)
+            const tabText = document.getElementById('tab-text');
+            const tabImage = document.getElementById('tab-image');
+            const panelText = document.getElementById('panel-text');
+            const panelImage = document.getElementById('panel-image');
+
+            function showPanel(which) {
+                const showText = which === 'text';
+                if (tabText) tabText.setAttribute('aria-selected', showText ? 'true' : 'false');
+                if (tabImage) tabImage.setAttribute('aria-selected', showText ? 'false' : 'true');
+                if (panelText) panelText.hidden = !showText;
+                if (panelImage) panelImage.hidden = showText;
+            }
+
+            if (tabText) tabText.addEventListener('click', () => showPanel('text'));
+            if (tabImage) tabImage.addEventListener('click', () => showPanel('image'));
+
+            // 초기 상태(Text 우선) — HTML이 이미 Text를 선택으로 두고 있음
+            showPanel('text');
+
+            // Complete save functionality
+            async function saveTaskResult() {
+                console.log('🔵 saveTaskResult called'); // Debug log
+                
+                const button = document.getElementById('btn-save-result') || document.getElementById('saveResultBtn');
+                console.log('🔵 Button found:', button); // Debug log
+                
+                if (!button) {
+                    console.error('❌ No save button found');
+                    return;
+                }
+                
+                button.disabled = true;
+                button.textContent = '💾 저장 중...';
+                console.log('🔵 Button disabled, starting save...'); // Debug log
+                
+                try {
+                    // 1. Collect role card data
+                    const taskInfo = {
+                        taskGoal: document.getElementById('mission-text')?.textContent || '',
+                        challenges: Array.from(document.querySelectorAll('#keyInfoList li')).map(li => li.textContent.trim()),
+                        studentRole: document.getElementById('student-role')?.textContent || '',
+                        aiRole: document.getElementById('ai-role')?.textContent || '',
+                        supportingMaterials: document.getElementById('materials-text')?.textContent || ''
+                    };
+                    console.log('🔵 Task info collected:', taskInfo); // Debug log
+                    
+                    // 2. Collect conversation with timestamps
+                    const conversationLog = [];
+                    const messages = document.querySelectorAll('.message-wrapper');
+                    console.log('🔵 Found messages:', messages.length); // Debug log
+                    
+                    messages.forEach(wrapper => {
+                        const message = wrapper.querySelector('.message');
+                        const sender = message.classList.contains('user') ? 'Student' : 
+                                      message.classList.contains('assistant') ? 'AI' : 'System';
+                        
+                        if (sender !== 'System') {
+                            conversationLog.push({
+                                timestamp: new Date().toISOString(),
+                                sender: sender,
+                                message: message.textContent.trim()
+                            });
+                        }
+                    });
+                    console.log('🔵 Conversation log:', conversationLog); // Debug log
+                    
+                    // 3. Collect checklist status
+                    const checklistStatus = [];
+                    const checkboxes = document.querySelectorAll('#student-checklist input[type="checkbox"]');
+                    console.log('🔵 Found checkboxes:', checkboxes.length); // Debug log
+                    
+                    checkboxes.forEach((checkbox) => {
+                        const label = checkbox.nextElementSibling;
+                        if (label) {
+                            checklistStatus.push({
+                                item: label.textContent.trim(),
+                                completed: checkbox.checked
+                            });
+                        }
+                    });
+                    console.log('🔵 Checklist status:', checklistStatus); // Debug log
+                    
+                    // 4. Assemble complete data
+                    const resultData = {
+                        sessionId: new URLSearchParams(window.location.search).get('sessionId'),
+                        savedAt: new Date().toISOString(),
+                        roleCard: taskInfo,
+                        conversation: conversationLog,
+                        checklist: checklistStatus,
+                        completionRate: calculateCompletionRate()
+                    };
+                    console.log('🔵 Final result data:', resultData); // Debug log
+                    
+                    // 5. Send to server
+                    console.log('🔵 Sending to server...'); // Debug log
+                    const response = await fetch('/api/save-result', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'x-api-key': sessionId },
+                        body: JSON.stringify(resultData)
+                    });
+
+                    console.log('🔵 Server response status:', response.status); // Debug log
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error('❌ Server error:', errorText);
+                        throw new Error('저장 실패: ' + errorText);
+                    }
+                    
+                    console.log('✅ Save successful'); // Debug log
+
+                    // 서버가 docx 파일을 직접 스트림으로 반환 → blob 다운로드
+                    const blob = await response.blob();
+                    const blobUrl = URL.createObjectURL(blob);
+                    const filename = `result_${sessionId}_${Date.now()}.docx`;
+                    showSaveSuccessModal(blobUrl, filename);
+                    
+                } catch (error) {
+                    console.error('❌ Save error:', error);
+                    alert('과업 결과 저장에 실패했습니다: ' + error.message);
+                } finally {
+                    button.disabled = false;
+                    button.textContent = '결과 저장';
+                    console.log('🔵 Save process completed'); // Debug log
+                }
+            }
+
+            // 완성도 계산
+            function calculateCompletionRate() {
+                const checkboxes = document.querySelectorAll('#student-checklist input[type="checkbox"]');
+                if (checkboxes.length > 0) {
+                    const checked = Array.from(checkboxes).filter(cb => cb.checked).length;
+                    return Math.round((checked / checkboxes.length) * 100);
+                }
+                return 0;
+            }
+
+            // 저장 성공 모달
+            function showSaveSuccessModal(blobUrl, filename) {
+                const modal = document.createElement('div');
+                modal.className = 'modal save-success-modal';
+                modal.innerHTML = `
+                    <div class="modal-content">
+                        <h3>✅ [결과 다운로드] 버튼을 눌러<br>과업 결과를 다운로드 하세요!</h3>
+                        <p>대화 내용과 완성도가 Word 문서로 기록되었습니다.<br>추후 참고 용도로 활용하세요.</p>
+                        <div class="modal-buttons">
+                            <a href="${blobUrl}" class="download-btn" download="${filename}">📥 결과 다운로드</a>
+                            <button onclick="this.closest('.modal').remove()">닫기</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                modal.style.display = 'flex';
+            }
+
+            // --- 초기화 ---
+            loadTaskData();
+            
+            // 🆕 번역 기능 설정
+            document.querySelectorAll('.tr-btn[data-target]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const sel = btn.getAttribute('data-target');
+                    const node = document.querySelector(sel);
+                    if (!node) return;
+                    
+                    const text = (node.tagName === 'UL')
+                        ? [...node.querySelectorAll('li')].map(li => li.textContent).join('\n')
+                        : (node.textContent || '');
+                    
+                    if (!text.trim()) return;
+                    
+                    if (node.tagName === 'UL') {
+                        // Handle list items separately
+                        const lis = node.querySelectorAll('li');
+                        lis.forEach((li, i) => {
+                            const liText = li.textContent || '';
+                            if (liText.trim()) {
+                                inlineTranslate(li, liText);
+                            }
+                        });
+                    } else {
+                        inlineTranslate(node, text);
+                    }
+                });
+            });
+            
+            // 🆕 이미지 돋보기 설정 (수정된 수학)
+            (function setupMagnifier(){
+                const img = document.getElementById('materials-image'); 
+                if(!img) return;
+                const wrap = img.closest('.img-wrap'); 
+                if(!wrap) return;
+                const lens = document.createElement('div'); 
+                lens.className='lens'; 
+                wrap.appendChild(lens);
+                const zoom = new Image(); 
+                lens.appendChild(zoom);
+                let scale = 2;
+                
+                // 렌즈 반지름 변수 (유지보수성 향상: 지름 280px → 반지름 140px)
+                const R = 140;
+                
+                function update(e){
+                    if(!img.src) return;
+                    const r = img.getBoundingClientRect();
+                    const rx = (e.clientX - r.left);  // px on displayed image
+                    const ry = (e.clientY - r.top);
+                    // clamp lens center
+                    const cx = Math.max(R, Math.min(r.width-R, rx));
+                    const cy = Math.max(R, Math.min(r.height-R, ry));
+                    lens.style.left = (cx-R)+'px';
+                    lens.style.top  = (cy-R)+'px';
+                    // scale from display->natural
+                    const sx = img.naturalWidth  / r.width;
+                    const sy = img.naturalHeight / r.height;
+                    zoom.src = img.src;
+                    zoom.style.width  = (img.naturalWidth*scale)+'px';
+                    zoom.style.height = (img.naturalHeight*scale)+'px';
+                    zoom.style.left = (-cx*sx*scale + R) + 'px';
+                    zoom.style.top  = (-cy*sy*scale + R) + 'px';
+                }
+                
+                img.addEventListener('mouseenter',()=>{ 
+                    if(img.src){ 
+                        lens.style.display='block'; 
+                        zoom.src=img.src; 
+                    }
+                });
+                img.addEventListener('mouseleave',()=>{ 
+                    lens.style.display='none'; 
+                });
+                img.addEventListener('mousemove',update);
+            })();
+
+            // 🆕 보조자료 번역 초기화
+            function bindMaterialsOriginalNow(){
+                const box = document.getElementById('materials-text');
+                if (!box) return;
+                MTX.en = box.textContent || '';
+                MTX.hash = hashText(MTX.en);
+                const qs = new URLSearchParams(location.search);
+                const sid = qs.get('sessionId') || qs.get('taskId') || 'noid';
+                MTX.key = `mtx:${sid}:${MTX.hash}`;
+                // localStorage 캐시가 있으면 불러오기
+                try{
+                    const saved = localStorage.getItem(MTX.key);
+                    if (saved){
+                        const obj = JSON.parse(saved);
+                        MTX.ko = obj.ko || '';
+                        // 캐시가 있으면 버튼 상태만 ko로 두되, 실제 보여주는 건 원문(초기 진입은 EN 보이기)
+                        setMaterialsButtonState('en'); // 버튼 라벨/상태만 초기화
+                    }else{
+                        MTX.ko = '';
+                        setMaterialsButtonState('en');
+                    }
+                }catch{ MTX.ko=''; setMaterialsButtonState('en'); }
+            }
+            
+            function setMaterialsButtonState(mode){
+                const btn = document.getElementById('btn-materials-translate');
+                if (!btn) return;
+                // mode: 'en' => 버튼에 '🌐' 표시(번역 가능), 'ko' => 'EN' 표시(원문보기)
+                if (mode==='en'){ btn.textContent='🌐'; MTX.shown='en'; }
+                else { btn.textContent='EN'; MTX.shown='ko'; }
+            }
+            
+            (function initMaterialsTranslate(){
+                const btn = document.getElementById('btn-materials-translate');
+                const box = document.getElementById('materials-text');
+                if (!btn || !box) return;
+                btn.addEventListener('click', async ()=>{
+                    // EN → KO
+                   if (MTX.shown==='en'){
+                        // 캐시 있으면 즉시 사용
+                        if (MTX.ko){
+                            box.textContent = MTX.ko;
+                            setMaterialsButtonState('ko');  // 버튼 'EN'
+                            return;
+                        }
+                        // 캐시 없으면 최초 1회만 번역 호출
+                        const prev = btn.textContent;
+                        btn.textContent='…'; btn.disabled=true;
+                        try{
+                            // 💡 미션 텍스트를 문맥으로 사용
+                            const missionContext = document.getElementById('mission-text')?.textContent || '';
+                            
+                            const r = await fetch('/api/translate',{
+                                method:'POST', headers:{'Content-Type':'application/json'},
+                                // 💡 context 필드 추가
+                                body: JSON.stringify({ text: MTX.en, target:'ko', context: missionContext })
+                            });
+                            const d = await r.json();
+                            MTX.ko = (d.translated || d.translation || MTX.en);
+                            // 캐시 저장
+                            try{ localStorage.setItem(MTX.key, JSON.stringify({ ko: MTX.ko })); }catch{}
+                            box.textContent = MTX.ko;
+                            setMaterialsButtonState('ko');
+                        }catch(e){
+                            console.warn('[materials translate] fail', e);
+                        }finally{
+                            btn.textContent=prev; btn.disabled=false;
+                        }
+                    }
+                    // KO → EN (항상 즉시 토글, API 호출 없음)
+                    else {
+                        box.textContent = MTX.en;
+                        setMaterialsButtonState('en');   // 버튼 '🌐'
+                    }
+                });
+            })();
+
+            // ========================================
+            // Lightbox Modal Functionality
+            // ========================================
+            (() => {
+                const imgThumb   = document.getElementById('materials-image');   // 썸네일
+                const modal      = document.getElementById('imgModal');
+                const backdrop   = modal.querySelector('.img-modal__backdrop');
+                const imgZoom    = document.getElementById('imgZoom');
+                const btnIn      = document.getElementById('btnZoomIn');
+                const btnOut     = document.getElementById('btnZoomOut');
+                const btnFit     = document.getElementById('btnZoomFit');
+                const btnOpenNew = document.getElementById('btnOpenNew');
+                const btnDownload= document.getElementById('btnDownload');
+                const btnClose   = document.getElementById('btnClose');
+
+                let scale = 1, tx = 0, ty = 0, dragging = false, sx = 0, sy = 0;
+
+                function openModal(src){
+                    imgZoom.src = src;
+                    btnOpenNew.href = src;
+                    btnDownload.href = src;
+                    modal.setAttribute('aria-hidden','false');
+                    resetFit();
+                }
+                function closeModal(){
+                    modal.setAttribute('aria-hidden','true');
+                    // 상태 초기화
+                    scale = 1; tx = ty = 0; applyTransform();
+                }
+                function applyTransform(){
+                    imgZoom.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+                }
+                function resetFit(){
+                    // 컨테이너 기준으로 처음은 '화면에 맞춤'
+                    const box = modal.querySelector('.img-modal__content').getBoundingClientRect();
+                    const img = new Image();
+                    img.onload = () => {
+                        const sw = box.width  / img.width;
+                        const sh = box.height / img.height;
+                        scale = Math.min(sw, sh) * 0.98; // 약간 여백
+                        tx = ty = 0;
+                        applyTransform();
+                    };
+                    img.src = imgZoom.src;
+                }
+                // open
+                imgThumb?.addEventListener('click', () => {
+                    if (imgThumb.src) openModal(imgThumb.src);
+                });
+
+                // close
+                backdrop.addEventListener('click', closeModal);
+                btnClose.addEventListener('click', closeModal);
+                window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeModal(); });
+
+                // zoom controls
+                btnIn.addEventListener('click', ()=>{ scale *= 1.2; applyTransform(); });
+                btnOut.addEventListener('click', ()=>{ scale = Math.max(0.1, scale/1.2); applyTransform(); });
+                btnFit.addEventListener('click', resetFit);
+
+                // wheel zoom (커서 기준 약식)
+                imgZoom.addEventListener('wheel', (e)=>{
+                    e.preventDefault();
+                    const prev = scale;
+                    const delta = e.deltaY < 0 ? 1.1 : 0.9;
+                    scale = Math.max(0.1, scale * delta);
+                    // 커서 기준 약간 보정
+                    const rect = imgZoom.getBoundingClientRect();
+                    const cx = e.clientX - rect.left - rect.width/2;
+                    const cy = e.clientY - rect.top  - rect.height/2;
+                    tx -= cx * (scale/prev - 1);
+                    ty -= cy * (scale/prev - 1);
+                    applyTransform();
+                }, {passive:false});
+
+                // drag to pan
+                imgZoom.addEventListener('pointerdown', (e)=>{
+                    dragging = true; sx = e.clientX; sy = e.clientY; imgZoom.setPointerCapture(e.pointerId);
+                });
+                imgZoom.addEventListener('pointermove', (e)=>{
+                    if(!dragging) return;
+                    tx += (e.clientX - sx);
+                    ty += (e.clientY - sy);
+                    sx = e.clientX; sy = e.clientY;
+                    applyTransform();
+                });
+                imgZoom.addEventListener('pointerup', ()=>{ dragging = false; });
+                imgZoom.addEventListener('pointercancel', ()=>{ dragging = false; });
+            })();
+        });
+    </script>
+</body>
+</html>

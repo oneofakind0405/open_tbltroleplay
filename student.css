@@ -1,0 +1,1660 @@
+/* ======================================== */
+/* 학생 페이지 전용 스타일 */
+/* ======================================== */
+
+/* Import common design system variables */
+@import url('common.css');
+
+/* hidden 강제 숨김(탭 패널 안전장치) */
+[hidden] { display: none !important; }
+
+/* 🆕 학생 페이지 전용 변수 */
+:root {
+    --student-bg: linear-gradient(135deg, #f6f8fb 0%, #e8f2ff 100%);
+    --student-card: #ffffff;
+    --student-ink: #253047;
+    --student-muted: #5b6b83;
+    --student-accent: #9ec5fe;
+    --student-accent2: #ffe3e3;
+    --student-ok: #b8f1cc;
+    --student-warn: #ffe9a6;
+    --student-radius: 18px;
+    --student-gap: 16px;
+}
+
+/* 🆕 3단 레이아웃 기본 스타일 */
+body {
+    background: var(--student-bg);
+    color: var(--student-ink);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.6;
+}
+
+.app {
+    display: grid;
+    gap: var(--student-gap);
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+#rolecard-section {
+    background: linear-gradient(135deg, rgba(123, 157, 255, 0.95) 0%, rgba(166, 139, 255, 0.95) 100%);
+    backdrop-filter: blur(10px);
+    color: white;
+    border-radius: var(--student-radius);
+    padding: 20px;  /* ✅ 30px → 20px */
+    box-shadow: var(--shadow-lg);
+    position: relative;
+    overflow: hidden;
+}
+
+#rolecard-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+    pointer-events: none;
+}
+
+/* Make YOUR CHALLENGES more prominent */
+#keyInfoList {
+    display: grid;
+    gap: 6px;  /* ✅ 10px → 6px */
+    padding: 0;
+    list-style: none;
+}
+
+#keyInfoList li {
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(10px);
+    padding: 8px 12px;  /* ✅ 12px 16px → 8px 12px */
+    border-radius: 8px;  /* ✅ 12px → 8px */
+    border-left: 3px solid rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+    font-size: 0.9rem;  /* ✅ 추가 */
+    line-height: 1.4;  /* ✅ 1.6 → 1.4 */
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+#keyInfoList li:hover {
+    background: rgba(255, 255, 255, 0.35);
+    transform: translateX(4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+#middle-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--student-gap);
+    height: 600px;  /* ✅ 고정 높이 */
+}
+
+#middle-section .pane {
+    background: var(--student-card);
+    border-radius: var(--student-radius);
+    box-shadow: var(--shadow-md);
+    height: 600px; /* 좌우 패널 높이 통일 */
+    min-height: auto;  /* ✅ min-height 제거 */
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(123, 157, 255, 0.1);
+    overflow: hidden;  /* ✅ 넘치는 내용 숨김 */
+}
+
+#middle-section .pane:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+#middle-section .pane {
+    padding: 20px;
+}
+
+/* 🆕 중간 섹션 레이아웃 정렬 개선 */
+#chat-col {
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* 부모로부터 상속 */
+}
+
+#chat-area {
+    flex: 1; /* 남은 공간 차지 */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* 내부에서만 스크롤 */
+    margin-bottom: 0;
+}
+
+.input-area {
+    padding: 16px;
+    background: white;
+    border-top: 1px solid #e5e5e5;
+    margin-top: 0;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+
+#voice-input-wrap {
+    flex-shrink: 0; /* 축소 방지 */
+    position: sticky;
+    bottom: 0;
+    background: white;
+    z-index: 10;
+    border-top: 2px solid #e5e5e5;
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
+    margin-top: 0;
+    padding-top: 16px;
+}
+
+#bottom-section {
+    background: var(--student-card);
+    border-radius: var(--student-radius);
+    box-shadow: var(--shadow-md);
+    padding: 30px;
+    border: 1px solid rgba(123, 157, 255, 0.1);
+}
+
+/* 🆕 현대적인 버튼 스타일 (교사 페이지와 동일) */
+button {
+    background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-purple) 100%);
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 12px 20px;
+    color: white;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    overflow: hidden;
+    font-family: inherit;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+/* 특별 버튼 스타일 */
+#btn-start-task {
+    background: linear-gradient(135deg, var(--theme-secondary) 0%, #45B06A 100%);
+    padding: 18px 30px;
+    font-size: 1.1rem;
+    position: relative;
+}
+
+#btn-start-task::before {
+    content: "🚀";
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.1rem;
+}
+
+#btn-start-task {
+    padding-left: 50px;
+}
+
+/* 🆕 역할 카드 헤더 스타일 */
+.rolecard h2, .rolecard h3 {
+    margin: 8px 0;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.rolecard h2 {
+    font-size: 1.2rem;  /* ✅ 1.5rem → 1.2rem */
+    font-weight: 700;
+    border-bottom: 2px solid rgba(255,255,255,0.3);
+    padding-bottom: 8px;  /* ✅ 10px → 8px */
+    margin-bottom: 12px;  /* ✅ 20px → 12px */
+}
+
+.rolecard h3 {
+    font-size: 0.95rem;  /* ✅ 1.1rem → 0.95rem */
+    font-weight: 600;
+    margin-top: 12px;  /* ✅ 20px → 12px */
+    margin-bottom: 8px;  /* ✅ 10px → 8px */
+}
+
+/* Mission 텍스트 축소 */
+#mission-text {
+    font-size: 0.95rem;  /* ✅ 추가 */
+    line-height: 1.4;
+    margin-bottom: 12px;
+}
+
+.grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;  /* ✅ var(--gap) → 12px */
+    margin-bottom: 12px;
+}
+
+.chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.chips li {
+    background: var(--accent);
+    color: #10346b;
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-weight: 600;
+}
+
+.tr-btn {
+    background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-purple) 100%);
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    cursor: pointer;
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-sm);
+    margin-left: 6px;
+}
+
+.tr-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.overline {
+    letter-spacing: .1em;  /* ✅ .12em → .1em */
+    font-weight: 700;
+    font-size: 0.75rem;  /* ✅ 추가 */
+    color: rgba(255,255,255,0.8);
+    margin-bottom: 4px;  /* ✅ 6px → 4px */
+}
+
+/* 🆕 과업 시작 버튼 및 비활성 상태 스타일 */
+.primary {
+    background: var(--ink);
+    color: white;
+    border-radius: 12px;
+    padding: 10px 14px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+}
+
+.primary:hover {
+    background: #1a2332;
+    transform: translateY(-1px);
+}
+
+[data-disabled="true"] {
+    opacity: 0.45;
+    pointer-events: none;
+    filter: grayscale(0.2);
+}
+
+/* 🆕 채팅 컨트롤 영역 스타일 */
+#chat-controls {
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+#chat-area {
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #f8f9ff 0%, #f0f2f5 100%);
+    border-radius: var(--radius-sm);
+    padding: 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ========================================
+   과업보조자료 탭 UI 개선
+   ======================================== */
+
+/* 탭 컨테이너 */
+.tabs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    background: #f8f9ff; /* 배경 추가 */
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid #e0e4ef;
+}
+
+/* 탭 버튼 기본 상태 (선택 안 됨) - 흰 배경 + 진한 텍스트 */
+.tabs button[role="tab"] {
+    color: #2c3e50 !important; /* 진한 회색 텍스트 */
+    background: #ffffff !important; /* 흰색 배경 */
+    border: 2px solid #d0d7de !important;
+    border-radius: 8px;
+    padding: 10px 18px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+/* 탭 버튼 호버 */
+.tabs button[role="tab"]:hover {
+    background: #f0f4ff !important;
+    border-color: var(--theme-primary) !important;
+    color: var(--theme-primary) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(123, 157, 255, 0.2);
+}
+
+/* 탭 버튼 선택 상태 - 파란 배경 + 흰 텍스트 */
+.tabs button[role="tab"][aria-selected="true"] {
+    background: var(--theme-primary) !important;
+    color: white !important;
+    border-color: var(--theme-primary) !important;
+    box-shadow: 0 3px 10px rgba(123, 157, 255, 0.4);
+}
+
+/* 포커스 상태 */
+.tabs button[role="tab"]:focus {
+    outline: 3px solid rgba(123, 157, 255, 0.3);
+    outline-offset: 2px;
+}
+
+/* 번역 버튼 (탭 옆) */
+.tabs #btn-materials-translate,
+.tabs .tr-btn {
+    margin-left: auto;
+    background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-purple) 100%);
+    color: white !important;
+    border: none !important;
+    padding: 8px 14px;
+    font-size: 0.9rem;
+}
+
+.scrollbox {
+    flex: 1;  /* ✅ 남은 공간 채우기 */
+    max-height: none;  /* ✅ max-height 제거 */
+    min-height: auto;  /* ✅ min-height 제거 */
+    overflow: auto;
+    border: 1px solid #e0e4ef;
+    border-radius: 12px;
+    padding: 12px;
+    background: #ffffff; /* Ensure white background */
+    color: #2c3e50; /* Dark text for all scrollbox content */
+}
+
+#materials-text {
+    white-space: pre-wrap;
+    line-height: 1.7;
+    color: #2c3e50 !important; /* Force dark text - MUST BE VISIBLE */
+    background: #ffffff !important;
+    padding: 16px;
+    border-radius: 8px;
+}
+
+/* Force all content inside materials text to be visible */
+#materials-text,
+#materials-text * {
+    color: #2c3e50 !important;
+}
+
+/* Fix panel background for better contrast */
+#materials-col .pane {
+    background: linear-gradient(135deg, #f8f9ff 0%, #f0f2f5 100%);
+}
+
+/* ========================================
+   과업보조자료 스크롤 기능 개선
+   ======================================== */
+
+/* ✅ 패널 자체를 flex 컬럼으로 만들고, 내부에 줄어들 수 있는 높이 허용 */
+#materials-col {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;        /* 중요: 자식이 줄어들 수 있게 */
+}
+
+/* 탭은 높이 고정(줄어들지 않도록) */
+#materials-col .tabs {
+    flex-shrink: 0;
+}
+
+/* ✅ 탭패널이 남은 높이를 차지하도록, 그리고 안쪽 스크롤 허용을 위해 min-height:0 */
+#panel-text,
+#panel-image {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;        /* 중요 */
+}
+
+/* ✅ 실제 스크롤은 이 박스에서 발생 */
+#materials-text.scrollbox {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;       /* 이미 있으나 재확인 */
+    -webkit-overflow-scrolling: touch; /* 모바일에서 부드러운 스크롤 */
+}
+
+.img-wrap {
+    position: relative;
+    max-height: 360px;
+    overflow: hidden;
+    border-radius: 12px;
+}
+
+#materials-image {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+/* 이미지 위 문구 오버레이 */
+#materials-image-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.image-overlay-text {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    font-size: 0.9rem;
+    padding: 6px 10px;
+    border-radius: 8px;
+    opacity: 0.85;
+    pointer-events: none; /* 클릭은 이미지에만 전달 */
+    transition: opacity 0.2s ease-in-out;
+}
+
+#materials-image-wrapper:hover .image-overlay-text {
+    opacity: 1;
+}
+
+/* 🆕 이미지 돋보기 효과 - 비활성화 */
+.lens {
+    display: none !important; /* 렌즈 표시 강제 비활성 */
+}
+
+.lens img {
+    position: absolute;
+    transform-origin: top left;
+}
+
+/* ========================================
+   Lightbox Modal Styles
+   ======================================== */
+
+/* Lightbox modal */
+.img-modal { 
+    position: fixed; 
+    inset: 0; 
+    display: none; 
+    z-index: 9999; 
+}
+
+.img-modal[aria-hidden="false"] { 
+    display: block; 
+}
+
+.img-modal__backdrop { 
+    position: absolute; 
+    inset: 0; 
+    background: rgba(0,0,0,.6); 
+}
+
+.img-modal__content {
+    position: absolute; 
+    inset: 4%; 
+    background: #111; 
+    border-radius: 12px;
+    overflow: hidden; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+}
+
+.img-modal__image {
+    max-width: none; 
+    max-height: none; /* 스케일로 제어 */
+    transform-origin: center center;
+    cursor: grab; 
+    user-select: none; 
+    touch-action: none;
+}
+
+.img-modal__image:active { 
+    cursor: grabbing; 
+}
+
+.img-modal__toolbar {
+    position: absolute; 
+    right: 12px; 
+    top: 12px; 
+    display: flex; 
+    gap: 8px;
+}
+
+.img-modal__toolbar > * {
+    background: rgba(255,255,255,.9); 
+    border: none; 
+    border-radius: 8px;
+    padding: 8px 12px; 
+    font-weight: 700; 
+    cursor: pointer; 
+    text-decoration: none; 
+    color: #222;
+    transition: all 0.2s ease;
+}
+
+.img-modal__toolbar > *:hover {
+    background: rgba(255,255,255,1);
+    transform: scale(1.05);
+}
+
+/* 🆕 4:5 비율 옵션 (필요시 사용) */
+.middle.ratio-45 {
+    grid-template-columns: 4fr 5fr;
+}
+
+/* 🆕 하단 체크리스트 및 저장 영역 */
+#goals-and-save {
+    width: 100%;
+}
+
+#goals-and-save .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+#student-checklist li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0;
+}
+
+#student-checklist input[type="checkbox"] {
+    transform: scale(1.2);
+}
+
+/* 🆕 번역 표시 스타일 */
+[data-tr].show-tr::after {
+    content: attr(data-tr);
+    display: block;
+    margin-top: 8px;
+    padding: 8px;
+    border-radius: 8px;
+    background: var(--warn);
+    color: #4a3d00;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    border-left: 3px solid #d4a017;
+}
+
+/* 체크리스트 라벨 기본 */
+#student-checklist label.ck-label {
+    display: block;
+    line-height: 1.6;
+}
+
+/* 라벨에 번역 데이터가 있으면 '아래'에 표시 */
+#student-checklist label.ck-label[data-tr].show-tr::after {
+    content: attr(data-tr);
+    display: block;
+    margin-top: 6px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: var(--warn);   /* 부드러운 노란톤 */
+    color: #4a3d00;
+    white-space: pre-wrap;
+}
+
+/* Do not show inline-translation overlay in materials text */
+#materials-text[data-tr]::after,
+#materials-text.show-tr::after { 
+    display: none !important; 
+}
+
+/* 🆕 반응형 디자인 */
+@media (max-width: 1024px) {
+    #middle-section {
+        grid-template-columns: 1fr;
+        height: auto;  /* ✅ 모바일에서는 자동 높이 */
+    }
+    
+    #middle-section .pane {
+        min-height: 400px;  /* ✅ 모바일 최소 높이 */
+    }
+}
+
+/* 저장 버튼 */
+.save-section {
+    text-align: center;
+    padding: 20px;
+    background: white;
+    border: 1px solid #E8E8E8;
+    border-radius: 12px;
+}
+
+.save-result-btn {
+    padding: 16px 32px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, #50C878 0%, #48B96C 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 12px rgba(80, 200, 120, 0.3);
+}
+
+.save-result-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(80, 200, 120, 0.4);
+}
+
+.save-result-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* 저장 성공 모달 */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 16px;
+    padding: 32px;
+    max-width: 500px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from { 
+        opacity: 0; 
+        transform: translateY(30px); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translateY(0); 
+    }
+}
+
+.modal-content h3 {
+    color: #2c3e50;
+    margin-bottom: 16px;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+    justify-content: center;
+}
+
+.download-btn {
+    display: inline-block;
+    padding: 12px 24px;
+    background: #667eea;
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.download-btn:hover {
+    background: #5568d3;
+    transform: translateY(-2px);
+}
+
+/* 학생 페이지 레이아웃 - 새로운 3단 구조에 맞게 조정 */
+.task-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 0; /* 상위 .app에서 gap 관리 */
+}
+
+/* 학생 페이지 패널 기본 스타일 - 새로운 테마 적용 */
+.panel {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: 0 4px 16px rgba(0,0,0,.05);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.panel:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.panel h2 {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    margin: 0;
+    padding: 20px 24px;
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+
+/* 1️⃣ 과업 정보 패널 - 심플하고 깔끔한 색감 */
+#taskInfoPanel {
+    background: white;
+    border: 1px solid #E8E8E8;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+/* 섹션별 색상 통일 */
+.info-section {
+    border-bottom: 1px solid #F0F0F0;
+}
+
+.info-section summary {
+    background: #FAFAFA;
+    color: #333;
+    padding: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    transition: background-color 0.2s ease;
+}
+
+.info-section summary:hover {
+    background: #F5F5F5;
+}
+
+.info-section summary::-webkit-details-marker {
+    display: none;
+}
+
+.info-section summary::after {
+    content: '▼';
+    font-size: 0.8em;
+    transition: transform 0.2s;
+}
+
+.info-section[open] > summary {
+    background: #F8F9FA;
+    border-bottom: 2px solid #E0E0E0;
+}
+
+.info-section[open] > summary::after {
+    transform: rotate(180deg);
+}
+
+.info-section .content {
+    background: white;
+    padding: 20px;
+    color: #555;
+    line-height: 1.8;
+    position: relative;
+}
+
+.info-section .content p {
+    white-space: normal; /* pre-wrap이 아닌 normal */
+    line-height: 1.8;
+    margin-bottom: 10px;
+    padding-right: 30px;
+}
+
+/* 번역 아이콘 특별 스타일 - 제거됨 */
+/* .translate-icon.info-icon {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    font-size: 1.2rem;
+    opacity: 0.6;
+}
+
+.translate-icon.info-icon:hover {
+    opacity: 1;
+} */
+
+/* 2️⃣ 대화창 - 카카오톡 스타일 말풍선 */
+#chatContainer {
+    background: #f3f6ff;
+    padding: 20px;
+    border-radius: 12px;
+    flex: 1; /* 공간 채우기 */
+    overflow-y: auto; /* 스크롤 활성화 */
+    max-height: none; /* 제한 없음 */
+}
+
+/* 사용자 메시지 (오른쪽) */
+.message.user {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 18px 18px 4px 18px;
+    box-shadow: 0 2px 10px rgba(102,126,234,.25);
+    padding: 12px 16px;
+    max-width: 70%;
+    margin-left: auto;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    word-wrap: break-word;
+}
+
+/* AI 메시지 (왼쪽) */
+.message.assistant {
+    background: #fff;
+    color: #333;
+    border: 1px solid #E8E8E8;
+    border-radius: 18px 18px 18px 4px;
+    padding: 12px 16px;
+    max-width: 70%;
+    margin-right: auto;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    word-wrap: break-word;
+}
+
+/* 메시지 wrapper 정렬 */
+.message-wrapper {
+    margin-bottom: 16px;
+    display: flex;
+    align-items: flex-end;
+}
+
+.user-wrapper {
+    justify-content: flex-end;
+    flex-direction: row;
+}
+
+.assistant-wrapper {
+    justify-content: flex-start;
+    flex-direction: row-reverse;
+    align-items: flex-end;
+}
+
+/* .assistant-wrapper .translate-icon {
+    margin-left: 8px;
+    margin-bottom: 2px;
+    font-size: 1.2rem;
+    opacity: 0.6;
+}
+
+.assistant-wrapper .translate-icon:hover {
+    opacity: 1;
+} */
+
+/* 시스템 메시지 */
+.message.system {
+    background: #FFF3CD;
+    color: #856404;
+    border: 1px solid #FFEAA7;
+    text-align: center;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 0.9rem;
+    margin: 10px auto;
+    max-width: 80%;
+}
+
+/* 3️⃣ 과업완수 목표 - 정렬 및 색감 통일 */
+#taskOutcomePanel {
+    background: white;
+    border: 1px solid #E8E8E8;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    padding: 24px;
+}
+
+#taskOutcomePanel h2 {
+    color: #333;
+    font-size: 1.2rem;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #E0E0E0;
+    padding-bottom: 12px;
+}
+
+#taskOutcomePanel ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#taskOutcomePanel li {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    background: #FAFAFA;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border-left: 3px solid #E0E0E0;
+    transition: all 0.2s;
+    position: relative;
+    flex-wrap: wrap;
+}
+
+#taskOutcomePanel li:hover {
+    background: #F5F5F5;
+    border-left-color: var(--theme-primary);
+}
+
+#taskOutcomePanel input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    flex-shrink: 0;
+    margin: 0;
+}
+
+#taskOutcomePanel label {
+    flex: 1;
+    cursor: pointer;
+    font-size: 0.95rem;
+    color: #555;
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* 체크된 항목 스타일 */
+#taskOutcomePanel input[type="checkbox"]:checked + label {
+    text-decoration: line-through;
+    color: #999;
+}
+
+.outcome-icon {
+    margin-left: 8px;
+    align-self: center;
+}
+
+/* Fix outcome translation positioning - move to BOTTOM */
+.outcome-translation {
+    width: 100%;
+    margin-top: 8px;
+    margin-left: 0 !important; /* Force to left, not right */
+    order: 10; /* Ensure it appears last */
+}
+
+/* 체크리스트 항목 현대적 스타일 */
+#student-checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    background: #FAFAFA;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border-left: 3px solid #E0E0E0;
+    transition: all 0.2s;
+    flex-wrap: wrap; /* CRITICAL: Allow wrapping to next line */
+}
+
+#student-checklist li:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm) !important;
+}
+
+#student-checklist .translation-text {
+    width: 100%;
+    margin-top: 8px;
+    margin-left: 0;
+    order: 10;
+}
+
+#student-checklist li input[type="checkbox"] {
+    accent-color: var(--theme-primary);
+}
+
+.translate-icon.outcome-icon {
+    background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-purple) 100%);
+    color: white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s ease;
+}
+
+.translate-icon.outcome-icon:hover {
+    transform: scale(1.1);
+    box-shadow: var(--shadow-md);
+}
+
+/* 4️⃣ 음성 전용 입력 영역 */
+.input-area {
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: center;
+}
+
+.input-placeholder {
+    flex: 1;
+    text-align: center;
+    color: #999;
+    font-size: 0.95rem;
+    padding: 12px;
+    background: #F8F9FA;
+    border-radius: 8px;
+    border: 2px dashed #DDD;
+}
+
+#recordBtn {
+    padding: 14px 28px;
+    font-size: 1.1rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+#recordBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+#recordBtn.recording {
+    background: linear-gradient(135deg, #FF6B6B 0%, #EE5A6F 100%);
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* 5️⃣ 보조자료 이미지 지원 */
+#supportingMaterialsSection img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin-top: 15px;
+    border-radius: 8px;
+    border: 1px solid #E8E8E8;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+#supportingText {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.8;
+    padding: 20px;
+    background: linear-gradient(135deg, #f8f9ff 0%, #e8f2ff 100%);
+    border-left: 4px solid #667eea;
+    border-radius: 8px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 1rem;
+    color: #2c3e50;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* 번역 상태 표시 */
+.info-section .content pre[data-translated] {
+    position: relative;
+}
+
+.info-section .content pre.translated-mode::before {
+    content: "🇰🇷 한글";
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #667eea;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-family: sans-serif;
+}
+
+/* 6️⃣ 번역 텍스트 스타일 - 현대적 디자인 */
+.translation-text {
+    margin-top: 10px;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%);
+    border-left: 3px solid var(--theme-gold);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 400; /* NOT bold - consistent weight */
+    color: #856404;
+    line-height: 1.6;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    animation: fadeIn 0.3s ease;
+    position: relative;
+}
+
+.translation-text::before {
+    content: "🇰🇷";
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    font-size: 0.8rem;
+    opacity: 0.7;
+}
+
+/* Remove bold from chip translations */
+#keyInfoList li .translation-text {
+    font-weight: 400; /* Ensure no bold */
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.assistant-wrapper .translation-text {
+    width: 100%;
+    margin-left: 0;
+    align-self: flex-start;
+}
+
+/* 대화창 특별 스타일 */
+.chat-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: linear-gradient(135deg, #f8f9ff 0%, #f0f2f5 100%);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-sm);
+}
+
+.chat-title {
+    background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-purple) 100%);
+    color: white;
+    padding: 15px 20px;
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.chat-wrapper h2 {
+    background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-purple) 100%);
+    color: white;
+    padding: 15px 20px;
+    margin: 0;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* Expand chat container */
+#chatContainer {
+    background: #f3f6ff;
+    padding: 20px;
+    border-radius: 0 0 12px 12px;
+    flex: 1; /* 공간 채우기 */
+    overflow-y: auto; /* 스크롤 활성화 */
+    max-height: none; /* 제한 없음 */
+}
+
+/* 과업 완수 목표 패널 특별 스타일 */
+#taskOutcomePanel {
+    background: linear-gradient(135deg, var(--theme-secondary) 0%, var(--theme-accent) 100%);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-sm);
+}
+
+#taskOutcomePanel h2 {
+    background: linear-gradient(135deg, var(--theme-secondary) 0%, #45B06A 100%);
+    color: white;
+    padding: 15px 20px;
+    margin: 0;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* 과업 정보 패널 특별 스타일 */
+#taskInfoPanel {
+    background: linear-gradient(135deg, #d299c2 0%, #fef9d7 100%);
+}
+
+#taskInfoPanel h2 {
+    background: linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%);
+}
+
+/* 양식 입력 스타일 */
+.form-outcome {
+    background: white;
+    padding: 24px;
+    border-radius: 12px;
+    border: 1px solid #E8E8E8;
+}
+
+.form-instruction {
+    color: #667eea;
+    font-weight: 600;
+    margin-bottom: 20px;
+    font-size: 1rem;
+    padding: 12px;
+    background: #F0F4FF;
+    border-radius: 8px;
+}
+
+.form-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.form-field-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-field-wrapper label {
+    font-weight: 600;
+    color: #333;
+    font-size: 0.95rem;
+}
+
+.form-input {
+    padding: 12px 16px;
+    border: 2px solid #E5E5E5;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    background: #FAFAFA;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #667eea;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-input:valid {
+    border-color: #50C878;
+}
+
+.form-text {
+    color: #666;
+    font-style: italic;
+    margin: 0;
+    padding: 8px 0;
+}
+
+.form-progress {
+    padding: 12px 16px;
+    background: #F8F9FA;
+    border-radius: 8px;
+    text-align: center;
+    border-left: 4px solid #667eea;
+}
+
+.progress-text {
+    font-size: 0.95rem;
+    color: #555;
+}
+
+.progress-text strong {
+    font-size: 1.2rem;
+    color: #667eea;
+}
+
+/* 서브 섹션 스타일 */
+.sub-section {
+    margin-bottom: 0;
+    border-bottom: none;
+}
+
+.sub-section summary {
+    font-size: 0.9rem;
+    padding: 12px 16px;
+    background: #F8F9FA;
+}
+
+.sub-section .content {
+    padding: 16px;
+}
+
+.supporting-image {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 8px;
+    border: 1px solid #E8E8E8;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+/* 저장 버튼 */
+.save-section {
+    text-align: center;
+    padding: 20px;
+    background: white;
+    border: 1px solid #E8E8E8;
+    border-radius: 12px;
+}
+
+.save-result-btn {
+    padding: 16px 32px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, #50C878 0%, #48B96C 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 12px rgba(80, 200, 120, 0.3);
+}
+
+.save-result-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(80, 200, 120, 0.4);
+}
+
+.save-result-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* 저장 성공 모달 */
+.save-success-modal .modal-content {
+    text-align: center;
+}
+
+.download-btn {
+    display: inline-block;
+    padding: 12px 24px;
+    background: #667eea;
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.download-btn:hover {
+    background: #5568d3;
+    transform: translateY(-2px);
+}
+
+/* ======================================== */
+/* 학생 페이지 반응형 디자인 */
+/* ======================================== */
+@media (max-width: 768px) {
+    .task-container {
+        padding: 12px;
+        gap: 16px;
+    }
+    
+    .panel h2 {
+        padding: 16px 20px;
+        font-size: 1.1rem;
+    }
+    
+    #chatContainer {
+        padding: 16px;
+    }
+    
+    .input-area {
+        padding: 16px;
+        flex-direction: column;
+    }
+    
+    .input-placeholder {
+        width: 100%;
+        margin-bottom: 8px;
+    }
+    
+    .message.user,
+    .message.assistant {
+        max-width: 85%;
+    }
+}
+
+/* [추가할 코드] 학생 페이지 - 역할 카드 스타일 */
+.role-card-container {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+.card-section {
+    display: flex;
+    align-items: flex-start;
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid #EAEAEA;
+    background-color: #F9F9F9;
+    border-left-width: 5px;
+}
+.card-section .icon {
+    font-size: 1.8rem;
+    margin-right: 15px;
+    margin-top: -3px;
+}
+.card-section .content h4 {
+    margin: 0 0 5px 0;
+    font-size: 1rem;
+    color: #555;
+    font-weight: 600;
+}
+.card-section .content p,
+.card-section .content ul {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #2C3E50;
+    line-height: 1.6;
+}
+.card-section .content ul {
+    padding-left: 20px;
+}
+/* 정보 위계에 따른 색상 구분 (파스텔톤) */
+.card-section.mission    { border-left-color: var(--theme-primary); }
+.card-section.character  { border-left-color: var(--theme-purple); }
+.card-section.key-info   { border-left-color: var(--theme-accent); }
+.card-section.partner    { border-left-color: var(--theme-secondary); }
+.translatable-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+}
+.translatable-content p,
+.translatable-content ul {
+    flex-grow: 1;
+}
+
+/* ======================================== */
+/* 번역 모달 스타일 (신규 추가) */
+/* ======================================== */
+
+.translation-modal {
+    position: absolute;
+    background-color: var(--bg-surface);
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    border: 1px solid #EAEAEA;
+    padding: 16px;
+    z-index: 1000;
+    max-width: 350px;
+    opacity: 0;
+    transform: translateY(10px);
+    animation: fadeIn 0.3s forwards;
+}
+
+@keyframes fadeIn {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.translation-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #F0F0F0;
+}
+
+.translation-modal-header h5 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.translation-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    cursor: pointer;
+    color: var(--text-light);
+    transition: color 0.2s;
+}
+
+.translation-modal-close:hover {
+    color: var(--text-secondary);
+}
+
+.translation-modal-content .original-text {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    font-style: italic;
+}
+
+.translation-modal-content .translated-text {
+    font-size: 1rem;
+    color: var(--theme-primary);
+    font-weight: 500;
+}
+
+/* 번역 아이콘 로딩 상태 - 제거됨 */
+/* .translate-icon.loading {
+    opacity: 0.6;
+    pointer-events: none;
+} */
+
+/* ======================================== */
+/* 기존 레이아웃 스타일 제거됨 - 새로운 3단 구조로 대체 */
+/* ======================================== */
+
+/* ========================================
+   저장 버튼 강제 표시 (긴급 수정)
+   ======================================== */
+
+/* 저장 버튼 자체 */
+#btn-save-result {
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    background: linear-gradient(135deg, #50C878 0%, #48B96C 100%) !important;
+    color: white !important;
+    padding: 14px 28px !important;
+    border-radius: 10px !important;
+    border: none !important;
+    cursor: pointer !important;
+    font-weight: 600 !important;
+    font-size: 1.05rem !important;
+    box-shadow: 0 4px 12px rgba(80, 200, 120, 0.3) !important;
+    transition: all 0.3s ease !important;
+}
+
+#btn-save-result:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 16px rgba(80, 200, 120, 0.4) !important;
+}
+
+#btn-save-result:disabled {
+    opacity: 0.6 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+}
+
+/* 부모 요소들 표시 강제 */
+#bottom-section {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+#goals-and-save {
+    display: block !important;
+    visibility: visible !important;
+}
+
+#goals-and-save .actions {
+    display: flex !important;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+/* ======================================== */
+/* 롤카드 UI 개선 (가독성 향상) */
+/* ======================================== */
+
+/* 1. [ ROLE CARD ] 글씨 키우기 */
+.overline {
+    font-size: 1rem; /* 기존보다 크게 */
+    font-weight: 600; /* 조금 더 굵게 */
+    letter-spacing: 0.5px;
+}
+
+/* 2. 번역 버튼 안내 문구 스타일 */
+.translate-helper {
+    display: block; /* 줄바꿈 */
+    margin-top: 4px;
+    margin-bottom: 12px; /* 제목과의 간격 */
+    font-size: 0.9rem;
+    color: var(--student-muted, #5b6b83); /* student.css의 변수 활용 */
+    text-align: left;
+}
