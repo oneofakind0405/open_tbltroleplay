@@ -258,10 +258,18 @@ app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
-  // 개발 환경에서는 CSP를 완화하여 DevTools가 정상 작동하도록 함
-  if (NODE_ENV === 'development') {
-    res.setHeader('Content-Security-Policy', "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; connect-src 'self' ws: wss:;");
-  }
+  // Vercel이 default-src 'none' 을 기본으로 추가하므로 항상 명시적으로 CSP를 설정
+  const csp = [
+    "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live https://*.vercel.live",
+    "style-src 'self' 'unsafe-inline'",
+    "connect-src 'self' https://generativelanguage.googleapis.com https://vercel.live https://*.vercel.live wss://*.vercel.live" + (NODE_ENV === 'development' ? ' ws: wss:' : ''),
+    "img-src 'self' data: blob: https:",
+    "media-src 'self' blob: data:",
+    "worker-src 'self' blob:",
+    "font-src 'self' data:"
+  ].join('; ');
+  res.setHeader('Content-Security-Policy', csp);
   next();
 });
 
