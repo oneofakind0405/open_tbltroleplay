@@ -1242,10 +1242,14 @@ app.post('/api/save-result', async (req, res) => {
     }
 });
 
-// 서버 시작
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server is running on port ${PORT}`);
-  console.log(`📚 TBLT Speaking Web App v3.0`);
-  console.log(`🌐 Access the app at: http://localhost:${PORT}`);
-}); 
+// 서버 시작 (Vercel 서버리스 환경에서는 listen 불필요)
+if (process.env.VERCEL !== '1') {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`🚀 Server is running on port ${PORT}`);
+    console.log(`📚 TBLT Speaking Web App v3.0`);
+    console.log(`🌐 Access the app at: http://localhost:${PORT}`);
+  });
+}
+
+export default app; 
