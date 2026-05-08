@@ -124,6 +124,9 @@
             return String(h>>>0); 
         }
 
+        // 세션 ID (번역/TTS API 키 조회에 필요)
+        const sessionId = new URLSearchParams(window.location.search).get('sessionId') || '';
+
         // Translation helper function for checklist items
         async function translateText(text, context = '') {
             try {
@@ -134,7 +137,7 @@
 
                 const response = await fetch('/api/translate', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'x-session-id': sessionId },
                     // 💡 context 필드 추가
                     body: JSON.stringify({ text: text, target: 'ko', context: context })
                 });
@@ -165,7 +168,6 @@
             // --- 상태 변수 ---
             let mediaRecorder, audioChunks = [], isRecording = false;
             let conversationHistory = [], aiSystemPrompt = '';
-            const sessionId = new URLSearchParams(window.location.search).get('sessionId') || '';
 
             // 🆕 채팅 활성화 상태 확인
             function chatEnabled() {
@@ -202,7 +204,7 @@
                 try {
                     const r = await fetch('/api/translate', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'x-session-id': sessionId },
                         // 4. ✅ 생성한 apiContext를 body에 포함
                         body: JSON.stringify({ text: rawText, target: 'ko', context: apiContext })
                     });
@@ -509,9 +511,13 @@
                     const data = await response.json();
                     const aiResponse = data.message;
 
+                    // IMPORTANT: We must add the initial user prompt to the history
+                    // so that the conversation starts with a 'user' role, which is required by Gemini.
+                    conversationHistory.push(initialPrompt);
+
                     addMessageToChat('assistant', aiResponse);
                     conversationHistory.push({ role: 'assistant', content: aiResponse });
-                    
+
                     await playAIAudio(aiResponse);
 
                 } catch (error) {
@@ -560,8 +566,8 @@
                  if (!text) return;
                  try {
                     const response = await fetch('/api/proxy-elevenlabs', {
-                    method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'x-session-id': sessionId },
                         body: JSON.stringify({ text })
                     });
                     if (response.ok) {
@@ -647,6 +653,7 @@
                     try {
                         const response = await fetch('/api/proxy-whisper', {
                             method: 'POST',
+                            headers: { 'x-session-id': sessionId },
                             body: formData
                         });
 
@@ -761,7 +768,7 @@
                             try {
                                 const response = await fetch('/api/translate', {
                                     method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
+                                    headers: { 'Content-Type': 'application/json', 'x-session-id': sessionId },
                                     // 💡 studentInfo context로 변경
                                     body: JSON.stringify({ text: originalTexts, targetLanguage: 'ko', context: 'studentInfo' })
                                 });
@@ -817,7 +824,7 @@
                             try {
                                 const response = await fetch('/api/translate', {
                                     method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
+                                    headers: { 'Content-Type': 'application/json', 'x-session-id': sessionId },
                                     // 💡 context 필드 추가
                                     body: JSON.stringify({ text: originalText, targetLanguage: 'ko', context: roleCardContext })
                                 });
@@ -874,12 +881,12 @@
 
                             const response = await fetch('/api/translate', {
                                 method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
+                                headers: { 'Content-Type': 'application/json', 'x-session-id': sessionId },
                                 // 💡 text와 함께 context 전송
-                                body: JSON.stringify({ 
-                                    text: originalText, 
+                                body: JSON.stringify({
+                                    text: originalText,
                                     targetLanguage: 'ko',
-                                    context: fullContext 
+                                    context: fullContext
                                 })
                             });
                             const data = await response.json();
@@ -918,7 +925,7 @@
                 try {
                     const r = await fetch('/api/translate', {
                                 method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
+                                headers: { 'Content-Type': 'application/json', 'x-session-id': sessionId },
                         body: JSON.stringify({ text: raw, target: 'ko' })
                     });
                     const d = await r.json();
@@ -1265,7 +1272,7 @@
                             const missionContext = document.getElementById('mission-text')?.textContent || '';
                             
                             const r = await fetch('/api/translate',{
-                                method:'POST', headers:{'Content-Type':'application/json'},
+                                method:'POST', headers:{'Content-Type':'application/json', 'x-session-id': sessionId},
                                 // 💡 context 필드 추가
                                 body: JSON.stringify({ text: MTX.en, target:'ko', context: missionContext })
                             });

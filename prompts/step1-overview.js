@@ -370,7 +370,7 @@ REMEMBER: Be creative and unique with each generation - use different numbers, p
 }
 
 export const config = {
-  model: "gpt-4o",
+  model: "gemini-2.5-flash",
   temperature: 0.8,
   response_format: { type: "json_object" },
   max_tokens: 900

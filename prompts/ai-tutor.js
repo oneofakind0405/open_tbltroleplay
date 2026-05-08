@@ -8,7 +8,7 @@
  */
 
 export const config = {
-    model: "gpt-4o",           // Fast, cost-effective for conversational AI
+    model: "gemini-2.5-flash",           // Fast, cost-effective for conversational AI
     temperature: 0.7,          // Balanced: natural but consistent responses
     max_tokens: 500,           // Keep responses short (A2-B1 appropriate)
     presence_penalty: 0.3,     // Reduce repetitive phrases

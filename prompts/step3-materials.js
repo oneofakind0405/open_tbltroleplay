@@ -600,7 +600,7 @@ Now generate the supporting materials for the given task overview and material t
 }
 
 export const config = {
-    model: "gpt-4o",
+    model: "gemini-2.5-flash",
     temperature: 0.7,
     response_format: { type: "json_object" }
 };

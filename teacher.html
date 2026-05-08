@@ -52,9 +52,9 @@
 </head>
 <body>
     <div id="api-key-bar">
-        <label for="api-key-input"><strong>🔑 OpenAI API Key</strong></label>
+        <label for="api-key-input"><strong>🔑 Gemini API Key</strong></label>
         <div id="api-key-input-group">
-            <input type="password" id="api-key-input" placeholder="sk-..." autocomplete="off">
+            <input type="password" id="api-key-input" placeholder="AIzaSy..." autocomplete="off">
             <button type="button" id="api-key-toggle" onclick="toggleApiKeyVisibility()">표시</button>
             <button type="button" id="api-key-save" onclick="saveApiKey()">저장</button>
             <button type="button" id="api-key-delete" onclick="deleteApiKey()">삭제</button>
@@ -389,13 +389,7 @@ Notes: _________________________________"></textarea>
                 status.className = 'missing';
                 return;
             }
-            if (!key.startsWith('sk-')) {
-                status.textContent = '⚠️ 유효하지 않은 키 형식 (sk-로 시작해야 함)';
-                status.className = 'missing';
-                return;
-            }
             localStorage.setItem('openai_api_key', key);
-            input.value = '';
             status.textContent = '✅ API 키 저장됨';
             status.className = 'saved';
         }
@@ -429,7 +423,9 @@ Notes: _________________________________"></textarea>
         // 페이지 로드 시 API 키 상태 표시
         document.addEventListener('DOMContentLoaded', () => {
             const status = document.getElementById('api-key-status');
-            if (getApiKey()) {
+            const savedKey = getApiKey();
+            if (savedKey) {
+                document.getElementById('api-key-input').value = savedKey;
                 status.textContent = '✅ API 키 저장됨';
                 status.className = 'saved';
             }
@@ -1375,14 +1371,12 @@ How to use this:
                     });
                     
                     if (!response.ok) {
-                        let errorMessage = `서버 오류: ${response.status} ${response.statusText}`;
+                        let errorMessage = `HTTP ${response.status} ${response.statusText}`;
                         try {
                             const errorData = await response.json();
-                            if (errorData.error) errorMessage = errorData.error;
-                            if (errorData.details) errorMessage += `\n세부사항: ${errorData.details}`;
-                        } catch (e) {
-                            // JSON 파싱 실패 시 기본 메시지 사용
-                        }
+                            if (errorData.error) errorMessage += `\n${errorData.error}`;
+                            if (errorData.details) errorMessage += `\n${errorData.details}`;
+                        } catch (e) { /* JSON 파싱 실패 시 기본 메시지 사용 */ }
                         throw new Error(errorMessage);
                     }
                     
@@ -1529,7 +1523,11 @@ How to use this:
                         headers: getAuthHeaders(),
                         body: JSON.stringify({ taskOverview })
                     });
-                    if (!response.ok) throw new Error(`서버 오류: ${response.statusText}`);
+                    if (!response.ok) {
+                        let em = `HTTP ${response.status} ${response.statusText}`;
+                        try { const d = await response.json(); if (d.error) em += `\n${d.error}`; if (d.details) em += `\n${d.details}`; } catch(e) {}
+                        throw new Error(em);
+                    }
                     const checklist = await response.json();
                     
                     // 클라이언트 필터링: 안내/예시 문장 및 비목표 항목 제거
@@ -1580,7 +1578,11 @@ How to use this:
                             taskScenario: getInfoGapData() // ✅ 전체 정보격차 전달
                         })
                     });
-                    if (!response.ok) throw new Error(`서버 오류: ${response.statusText}`);
+                    if (!response.ok) {
+                        let em = `HTTP ${response.status} ${response.statusText}`;
+                        try { const d = await response.json(); if (d.error) em += `\n${d.error}`; if (d.details) em += `\n${d.details}`; } catch(e) {}
+                        throw new Error(em);
+                    }
                     const materials = await response.json();
                     document.getElementById('supportingMaterialsText').value = materials.supportingMaterialsText || '';
                     updateRoleCardPreview();
@@ -1693,7 +1695,7 @@ How to use this:
                 console.error('❌ catch 블록 실행됨 - step:', step);
                 console.error('❌ AI suggestion error:', error);
                 console.error('❌ Error stack:', error.stack);
-                alert('AI 제안을 생성하는 중 오류가 발생했습니다: ' + error.message);
+                alert('AI 제안 오류:\n' + error.message);
                 
                 // 🆕 에러 시 정리
                 clearInterval(timerInterval);

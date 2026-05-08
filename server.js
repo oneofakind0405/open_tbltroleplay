@@ -2,11 +2,11 @@
 import { config } from 'dotenv';
 config();
 
-// 🔥 2. 디버깅 (임시로 추가)
+// 🔥 2. 디버깅
 console.log('\n🔍 환경변수 체크:');
-console.log('OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 
-    `✅ ${process.env.OPENAI_API_KEY.substring(0, 20)}...` : 
-    '❌ 없음');
+console.log('GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? 
+    `✅ ${process.env.GEMINI_API_KEY.substring(0, 8)}...` : 
+    '❌ 없음 (브라우저에서 직접 입력 가능)');
 console.log('');
 
 // 3. 다른 import들
@@ -30,16 +30,20 @@ import * as Step3 from './prompts/step3-materials.js';
 import * as Step4 from './prompts/step4-ai-tutor-prompt.js';
 import * as AITutor from './prompts/ai-tutor.js';
 
-// 🔥 4. OpenAI 초기화 (환경변수는 선택사항 — 교사가 UI에서 키 입력 가능)
-if (!process.env.OPENAI_API_KEY) {
-    console.warn('⚠️ OPENAI_API_KEY가 설정되지 않았습니다.');
-    console.warn('   교사가 teacher.html 상단에서 API 키를 입력해야 합니다.');
+// 🔥 4. Gemini 초기화 (환경변수는 선택사항 — 교사가 UI에서 키 입력 가능)
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY || '';
+if (!GEMINI_API_KEY) {
+    console.warn('⚠️ GEMINI_API_KEY가 설정되지 않았습니다.');
+    console.warn('   교사가 teacher.html 상단에서 Gemini API 키를 입력해야 합니다.');
 } else {
-    console.log('✅ 환경변수 OPENAI_API_KEY 감지됨 (fallback으로 사용)');
+    console.log('✅ 환경변수 GEMINI_API_KEY 감지됨 (fallback으로 사용)');
 }
 
-const defaultOpenAI = process.env.OPENAI_API_KEY
-    ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+// Gemini OpenAI 호환 엔드포인트 기본 URL
+const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/';
+
+const defaultOpenAI = GEMINI_API_KEY
+    ? new OpenAI({ apiKey: GEMINI_API_KEY, baseURL: GEMINI_BASE_URL })
     : null;
 
 // 세션별 API 키 저장소 (교사가 저장 시 학생 채팅에도 활용)
@@ -47,15 +51,79 @@ const sessionApiKeys = new Map();
 
 function getOpenAI(req) {
     const clientKey = req?.headers?.['x-api-key'];
-    if (clientKey) return new OpenAI({ apiKey: clientKey });
-    if (defaultOpenAI) return defaultOpenAI;
-    throw new Error('API 키가 없습니다. teacher.html 상단에서 OpenAI API 키를 입력하고 저장해주세요.');
+    const apiKey = clientKey || GEMINI_API_KEY;
+    if (!apiKey) throw new Error('API 키가 없습니다. teacher.html 상단에서 Gemini API 키를 입력하고 저장해주세요.');
+    return new OpenAI({ apiKey, baseURL: GEMINI_BASE_URL });
 }
 
-console.log('✅ OpenAI 설정 완료\n');
+async function getGeminiApiKey(req) {
+    const headerKey = req?.headers?.['x-api-key'];
+    if (headerKey) return headerKey;
+
+    // 학생 페이지: x-session-id 헤더로 저장된 키 조회
+    const sid = req?.headers?.['x-session-id'];
+    if (sid) {
+        const memKey = sessionApiKeys.get(sid);
+        if (memKey) return memKey;
+        // MongoDB에서 조회
+        try {
+            const t = isMongoConnected
+                ? await Task.findOne({ sessionId: sid }).select('+openaiApiKey').lean()
+                : memoryTasks.get(sid);
+            if (t?.openaiApiKey) return t.openaiApiKey;
+        } catch (_) {}
+    }
+
+    return GEMINI_API_KEY || '';
+}
+
+// Gemini 네이티브 REST API 헬퍼 (OpenAI SDK 우회)
+async function callGemini(apiKey, { model, messages, temperature = 0.7, response_format, max_tokens } = {}) {
+    // API 키 공백 제거 (사용자가 복사/붙여넣기 시 공백이 들어갈 수 있음)
+    const cleanApiKey = (apiKey || '').trim();
+    
+    const systemMsg = messages.find(m => m.role === 'system');
+    const chatMessages = messages.filter(m => m.role !== 'system');
+
+    const contents = chatMessages.map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) }]
+    }));
+
+    const generationConfig = { temperature };
+    if (response_format?.type === 'json_object') generationConfig.responseMimeType = 'application/json';
+    if (max_tokens) generationConfig.maxOutputTokens = max_tokens;
+
+    const body = { contents, generationConfig };
+    if (systemMsg) body.systemInstruction = { parts: [{ text: systemMsg.content }] };
+
+    const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanApiKey}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+    );
+
+    if (!r.ok) {
+        const errText = await r.text();
+        let errMsg = errText;
+        try { errMsg = JSON.parse(errText).error?.message || errText; } catch {}
+        const err = new Error(`Gemini HTTP ${r.status}: ${errMsg || '(no body)'}`);
+        err.status = r.status;
+        throw err;
+    }
+
+    const data = await r.json();
+    let text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) throw new Error('Gemini API가 빈 응답을 반환했습니다.');
+    
+    // JSON 모드일지라도 Gemini가 종종 ```json ... ``` 형태의 마크다운을 반환하므로 이를 제거합니다.
+    text = text.replace(/^```json\n?/gm, '').replace(/^```\n?/gm, '').trim();
+    
+    return { choices: [{ message: { content: text, role: 'assistant' } }] };
+}
+
+console.log('✅ Gemini 설정 완료\n');
 
 // 환경변수 검증 및 설정
-const ELEVEN_KEY = process.env.ELEVENLABS_API_KEY;
 const SESSION_SECRET = process.env.SESSION_SECRET;
 const MONGO_URI = process.env.MONGO_URI;
 const TEACHER_PASSWORD = process.env.TEACHER_PASSWORD;
@@ -158,7 +226,7 @@ const audioUpload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
     fileFilter: (req, file, cb) => {
-        if (file.mimetype.startsWith('audio/')) {
+        if (file.mimetype.startsWith('audio/') || file.mimetype.includes('webm')) {
             cb(null, true);
         } else {
             cb(new Error('음성 파일만 업로드 가능'), false);
@@ -198,7 +266,8 @@ app.use((req, res, next) => {
 });
 
 // JSON 파싱 미들웨어
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // 세션별 턴 로그 저장소 (메모리 기반)
 const sessionLogs = new Map();
@@ -266,6 +335,16 @@ app.get('/favicon.ico', (req, res) => {
   res.status(204).end(); // No Content 응답
 });
 
+// 사용 가능한 Gemini 모델 목록 조회 (디버그용)
+app.get('/api/list-models', async (req, res) => {
+    const apiKey = req.headers['x-api-key'] || GEMINI_API_KEY;
+    if (!apiKey) return res.status(401).json({ error: 'x-api-key 헤더가 필요합니다.' });
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+    const data = await r.json();
+    const names = (data.models || []).map(m => m.name);
+    res.json({ status: r.status, models: names, raw: data.error || undefined });
+});
+
 // 🆕 1단계: 과업 개요 생성 API
 app.post('/api/generate-overview', async (req, res) => {
     const { keyword } = req.body;
@@ -275,13 +354,14 @@ app.post('/api/generate-overview', async (req, res) => {
     }
 
     try {
-        const openai = getOpenAI(req);
-        console.log(`[generate-overview] 시작: keyword="${keyword}"`);
+        const apiKey = req?.headers?.['x-api-key'] || GEMINI_API_KEY;
+        if (!apiKey) throw Object.assign(new Error('API 키가 없습니다.'), { status: 401 });
+        console.log(`[generate-overview] 시작: keyword="${keyword}", key=${apiKey.substring(0, 8)}...`);
 
-        const response = await openai.chat.completions.create({
+        const response = await callGemini(apiKey, {
             model: Step1.config.model,
             messages: [
-                { role: "system", content: Step1.systemPrompt }, 
+                { role: "system", content: Step1.systemPrompt },
                 { role: "user", content: Step1.generatePrompt(keyword) }
             ],
             response_format: Step1.config.response_format,
@@ -315,15 +395,17 @@ app.post('/api/generate-overview', async (req, res) => {
         console.error('  - 에러 메시지:', error.message);
         console.error('  - 스택:', error.stack);
         
-        // OpenAI API 관련 오류인지 확인
         if (error.status) {
             console.error('  - HTTP 상태:', error.status);
-            console.error('  - OpenAI 오류 코드:', error.code);
+            console.error('  - 오류 코드:', error.code);
+            console.error('  - 오류 바디:', JSON.stringify(error.error || error.body || '(없음)'));
         }
         
-        res.status(500).json({ 
-            error: '과업 개요 생성 중 오류가 발생했습니다.',
-            details: error.message || '알 수 없는 오류',
+        const statusCode = error.status || 500;
+        const geminiMsg = error.error?.error?.message || error.error?.message || error.message || '알 수 없는 오류';
+        res.status(statusCode).json({
+            error: `Gemini API 오류 (HTTP ${statusCode})`,
+            details: geminiMsg,
             type: error.constructor.name
         });
     }
@@ -338,11 +420,12 @@ app.post('/api/generate-checklist', async (req, res) => {
     }
 
     try {
-        const openai = getOpenAI(req);
-        const response = await openai.chat.completions.create({
+        const apiKey = req?.headers?.['x-api-key'] || GEMINI_API_KEY;
+        if (!apiKey) throw Object.assign(new Error('API 키가 없습니다.'), { status: 401 });
+        const response = await callGemini(apiKey, {
             model: Step2.config.model,
             messages: [
-                { role: "system", content: Step2.systemPrompt }, 
+                { role: "system", content: Step2.systemPrompt },
                 { role: "user", content: Step2.generatePrompt(taskOverview) }
             ],
             response_format: Step2.config.response_format,
@@ -354,7 +437,8 @@ app.post('/api/generate-checklist', async (req, res) => {
 
     } catch (error) {
         console.error('Checklist generation error:', error);
-        res.status(500).json({ error: '체크리스트 생성 중 오류가 발생했습니다.' });
+        const statusCode = error.status || 500;
+        res.status(statusCode).json({ error: '체크리스트 생성 중 오류가 발생했습니다.', details: error.message });
     }
 });
 
@@ -367,11 +451,12 @@ app.post('/api/generate-materials', async (req, res) => {
     }
 
     try {
-        const openai = getOpenAI(req);
-        const response = await openai.chat.completions.create({
+        const apiKey = req?.headers?.['x-api-key'] || GEMINI_API_KEY;
+        if (!apiKey) throw Object.assign(new Error('API 키가 없습니다.'), { status: 401 });
+        const response = await callGemini(apiKey, {
             model: Step3.config.model,
             messages: [
-                { role: "system", content: Step3.systemPrompt }, 
+                { role: "system", content: Step3.systemPrompt },
                 { role: "user", content: Step3.generatePrompt(taskOverview, materialType, studentInfoHints) }
             ],
             response_format: Step3.config.response_format,
@@ -383,7 +468,8 @@ app.post('/api/generate-materials', async (req, res) => {
 
     } catch (error) {
         console.error('Materials generation error:', error);
-        res.status(500).json({ error: '보조 자료 생성 중 오류가 발생했습니다.' });
+        const statusCode = error.status || 500;
+        res.status(statusCode).json({ error: '보조 자료 생성 중 오류가 발생했습니다.', details: error.message });
     }
 });
 
@@ -428,7 +514,8 @@ app.post('/api/generate-scenario-draft', async (req, res) => {
     }
 
     try {
-        const openai = getOpenAI(req);
+        const apiKey = req?.headers?.['x-api-key'] || GEMINI_API_KEY;
+        if (!apiKey) throw Object.assign(new Error('API 키가 없습니다.'), { status: 401 });
         const sys = `You compose INFORMATION-GAP role-play scenarios for secondary EFL.
 Return ONLY a strict JSON object with keys: scenarioText, studentInfo, aiInfo.
 Keep sentences short, classroom-safe, no special symbols.`;
@@ -450,10 +537,10 @@ Constraints:
 - Avoid meta-pedagogy; stay in-world.
 - English only, plain text.`;
 
-        const response = await openai.chat.completions.create({
+        const response = await callGemini(apiKey, {
             model: Step2.config.model,
             messages: [
-                { role: "system", content: sys }, 
+                { role: "system", content: sys },
                 { role: "user", content: user }
             ],
             response_format: { type: "json_object" },
@@ -525,10 +612,10 @@ Return JSON ONLY:
 { "aiInfo": ["...", "..."] }`;
 
     try {
-        const openai = getOpenAI(req);
-        // Use a strict, instruction-following model here
-        const response = await openai.chat.completions.create({
-            model: 'gpt-4o',
+        const apiKey = req?.headers?.['x-api-key'] || GEMINI_API_KEY;
+        if (!apiKey) throw Object.assign(new Error('API 키가 없습니다.'), { status: 401 });
+        const response = await callGemini(apiKey, {
+            model: 'gemini-2.5-flash',
             temperature: 0.7,
             response_format: { type: 'json_object' },
             messages: [
@@ -556,8 +643,8 @@ aiRole: ${JSON.stringify(taskOverview.aiRoleSimple)}
 studentInfo: ${JSON.stringify(taskOverview?.taskScenario?.studentInfo || [])}
 current_aiInfo: ${JSON.stringify(aiInfo)}
 `;
-            const repaired = await openai.chat.completions.create({
-                model: 'gpt-4o',
+            const repaired = await callGemini(apiKey, {
+                model: 'gemini-2.5-flash',
                 temperature: 0.3,
                 response_format: { type: 'json_object' },
                 messages: [
@@ -735,8 +822,7 @@ app.post('/api/chat', async (req, res) => {
             return res.status(401).json({ error: 'API 키가 없습니다. 교사가 과업을 다시 저장해주세요.' });
         }
 
-        const openai = new OpenAI({ apiKey });
-        const response = await openai.chat.completions.create({
+        const response = await callGemini(apiKey, {
             model: AITutor.config.model,
             messages: messages,
             temperature: AITutor.config.temperature
@@ -771,14 +857,13 @@ app.post('/api/dev-chat', async (req, res) => {
             { role: 'user', content: message }
         ];
 
-        // 3. OpenAI API 호출 (ai-tutor.js의 설정을 그대로 사용)
-        const openai = getOpenAI(req);
-        const completion = await openai.chat.completions.create({
+        // 3. Gemini 네이티브 API 호출
+        const apiKey = req?.headers?.['x-api-key'] || GEMINI_API_KEY;
+        if (!apiKey) return res.status(401).json({ error: 'API 키가 없습니다.' });
+        const completion = await callGemini(apiKey, {
             model: AITutor.config.model,
             temperature: AITutor.config.temperature,
             max_tokens: AITutor.config.max_tokens,
-            presence_penalty: AITutor.config.presence_penalty,
-            frequency_penalty: AITutor.config.frequency_penalty,
             messages: messages
         });
 
@@ -818,91 +903,125 @@ app.get('/api/logs/export', requireTeacherAuth, (req, res) => {
   res.send(csvContent);
 });
 
-// ElevenLabs TTS API 엔드포인트 (음성 재생)
+// PCM → WAV 변환 헬퍼 (Gemini TTS는 raw PCM을 반환하므로 브라우저 재생을 위해 WAV로 변환)
+function pcmToWav(pcmBuffer, sampleRate = 24000) {
+    const dataLength = pcmBuffer.length;
+    const header = Buffer.alloc(44);
+    header.write('RIFF', 0);
+    header.writeUInt32LE(36 + dataLength, 4);
+    header.write('WAVE', 8);
+    header.write('fmt ', 12);
+    header.writeUInt32LE(16, 16);
+    header.writeUInt16LE(1, 20);  // PCM
+    header.writeUInt16LE(1, 22);  // mono
+    header.writeUInt32LE(sampleRate, 24);
+    header.writeUInt32LE(sampleRate * 2, 28);
+    header.writeUInt16LE(2, 32);
+    header.writeUInt16LE(16, 34);
+    header.write('data', 36);
+    header.writeUInt32LE(dataLength, 40);
+    return Buffer.concat([header, pcmBuffer]);
+}
+
+// Gemini TTS API 엔드포인트 (음성 재생)
 app.post('/api/proxy-elevenlabs', async (req, res) => {
     const { text } = req.body;
     if (!text) return res.status(400).json({ error: 'Text is required.' });
-    
+
+    const apiKey = await getGeminiApiKey(req);
+    if (!apiKey) return res.status(401).json({ error: 'API 키가 없습니다.' });
+
     try {
-        // ElevenLabs API 호출
-        const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM`, {
-            method: 'POST',
-            headers: {
-                'Accept': 'audio/mpeg',
-                'Content-Type': 'application/json',
-                'xi-api-key': ELEVEN_KEY
-            },
-            body: JSON.stringify({
-                text: text,
-                model_id: 'eleven_monolingual_v1',
-                voice_settings: {
-                    stability: 0.5,
-                    similarity_boost: 0.5
-                }
-            })
-        });
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text }] }],
+                    generationConfig: {
+                        responseModalities: ['AUDIO'],
+                        speechConfig: {
+                            voiceConfig: {
+                                prebuiltVoiceConfig: { voiceName: 'Aoede' }
+                            }
+                        }
+                    }
+                })
+            }
+        );
+
+        const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(`ElevenLabs API error: ${response.status} ${response.statusText}`);
+            throw new Error(data.error?.message || `Gemini TTS error: ${response.status}`);
         }
 
-        // 응답 헤더 설정
-        res.setHeader('Content-Type', 'audio/mpeg');
+        const part = data.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+        if (!part?.data) throw new Error('Gemini TTS: 오디오 데이터 없음');
+
+        let audioBuffer = Buffer.from(part.data, 'base64');
+        let mimeType = part.mimeType || 'audio/wav';
+
+        // Gemini TTS는 raw PCM(audio/pcm)을 반환 → WAV로 변환해야 브라우저 재생 가능
+        if (mimeType.startsWith('audio/pcm') || mimeType.startsWith('audio/L16')) {
+            const rateMatch = mimeType.match(/rate=(\d+)/);
+            const sampleRate = rateMatch ? parseInt(rateMatch[1]) : 24000;
+            audioBuffer = pcmToWav(audioBuffer, sampleRate);
+            mimeType = 'audio/wav';
+        }
+
+        res.setHeader('Content-Type', mimeType);
         res.setHeader('Cache-Control', 'no-cache');
-        
-        // 오디오 스트림을 클라이언트로 전송
-        response.body.pipe(res);
-        
+        res.send(audioBuffer);
+
     } catch (error) {
-        console.error('ElevenLabs TTS API error:', error);
-        res.status(500).json({ 
-            error: 'Error generating audio. Please try again.',
-            details: error.message 
-        });
+        console.error('Gemini TTS error:', error);
+        res.status(500).json({ error: 'TTS 생성 중 오류가 발생했습니다.', details: error.message });
     }
 });
 
-// Whisper API 프록시 엔드포인트 (음성 → 텍스트 변환)
+
+// Gemini STT 엔드포인트 (음성 → 텍스트 변환)
 app.post('/api/proxy-whisper', audioUpload.single('audio'), async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: 'Audio file is required.' });
     }
 
+    const apiKey = await getGeminiApiKey(req);
+    if (!apiKey) return res.status(401).json({ error: 'API 키가 없습니다.' });
+
     try {
-        const formData = new FormData();
-        // **핵심 수정**: buffer를 직접 사용하고, 파일 이름과 타입을 명확히 지정합니다.
-        const audioBuffer = req.file.buffer;
-        formData.append('file', audioBuffer, {
-            filename: 'audio.webm',
-            contentType: req.file.mimetype || 'audio/webm',
-        });
-        formData.append('model', 'whisper-1');
-        formData.append('language', 'en'); // 영어로 강제 인식
+        const audioBase64 = req.file.buffer.toString('base64');
+        const mimeType = req.file.mimetype || 'audio/webm';
 
-        const whisperApiKey = req.headers['x-api-key'] || process.env.OPENAI_API_KEY;
-        if (!whisperApiKey) {
-            return res.status(401).json({ error: 'API 키가 없습니다.' });
-        }
-        const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${whisperApiKey}`,
-                ...formData.getHeaders(),
-            },
-            body: formData,
-        });
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { text: 'Transcribe the English speech in this audio file. Return ONLY the transcribed text, nothing else. If there is no recognizable speech, return an empty string.' },
+                            { inlineData: { mimeType, data: audioBase64 } }
+                        ]
+                    }]
+                })
+            }
+        );
 
-        const data = await whisperResponse.json();
+        const data = await response.json();
 
-        if (!whisperResponse.ok) {
-            // OpenAI가 보낸 구체적인 오류 메시지를 클라이언트에게 전달합니다.
-            throw new Error(data.error ? data.error.message : 'Whisper API Error');
+        if (!response.ok) {
+            throw new Error(data.error?.message || 'Gemini STT error');
         }
 
-        res.json(data);
+        const text = (data.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
+        res.json({ text });
 
     } catch (error) {
-        console.error('Whisper API proxy error:', error);
+        console.error('Gemini STT error:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -982,15 +1101,14 @@ Return ONLY the translated text, one line per constraint.`;
   }
 
   try {
-    const openai = getOpenAI(req);
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+    const apiKey = await getGeminiApiKey(req);
+    if (!apiKey) return res.json({ translated: text, translation: text });
+    const response = await callGemini(apiKey, {
+      model: 'gemini-2.5-flash',
       temperature: 0.1,
       max_tokens: 2048,
       messages: [
-        // 4. ✅ 위에서 생성한 '동적 시스템 프롬프트'를 적용
         { role: 'system', content: systemPrompt },
-        // 5. ✅ AI가 오해하지 않도록 User 메시지도 명확하게 수정
         { role: 'user', content: `Translate this text (Target=${target}):\n\n${text}` }
       ]
     });

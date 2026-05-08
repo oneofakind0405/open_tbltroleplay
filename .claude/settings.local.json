@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(netstat *)",
+      "Bash(node server.js)",
+      "Bash(curl -s http://localhost:3000/)"
+    ]
+  }
+}
