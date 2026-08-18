@@ -4,7 +4,7 @@
   "description": "TBLT Role-play Task Design Tool",
   "type": "module",
   "engines": {
-    "node": "20.x"
+    "node": "24.x"
   },
   "scripts": {
     "start": "node server.js",
